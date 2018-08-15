@@ -84,24 +84,27 @@ TrajOptProbPtr cppMethod()
   pci.kin = pci.env->getManipulator(pci.basic_info.manip);
 
   // Populate Init Info
-  Eigen::VectorXd start_pos = pci.env->getCurrentJointValues(pci.kin->getName());
   Eigen::VectorXd end_pos;
   end_pos.resize(pci.kin->numJoints());
   end_pos << 0.4, 0.2762, 0.0, -1.3348, 0.0, 1.4959, 0.0;
 
-  pci.init_info.type = InitInfo::GIVEN_TRAJ;
-  pci.init_info.data = TrajArray(steps_, pci.kin->numJoints());
-  for (unsigned idof = 0; idof < pci.kin->numJoints(); ++idof)
-  {
-    pci.init_info.data.col(idof) = VectorXd::LinSpaced(steps_, start_pos[idof], end_pos[idof]);
-  }
+  pci.init_info.type = InitInfo::STRAIGHT_LINE;
+  pci.init_info.data = end_pos;
 
   // Populate Cost Info
-  std::shared_ptr<JointVelTermInfo> jv = std::shared_ptr<JointVelTermInfo>(new JointVelTermInfo);
-  jv->coeffs = std::vector<double>(7, 1.0);
-  jv->name = "joint_vel";
-  jv->term_type = TT_COST;
-  pci.cost_infos.push_back(jv);
+  std::vector<std::string> joint_names = pci.kin->getJointNames();
+  for (std::size_t i = 0; i < joint_names.size(); i++)
+  {
+    std::shared_ptr<JointVelTermInfo> jv = std::shared_ptr<JointVelTermInfo>(new JointVelTermInfo);
+    jv->coeffs = std::vector<double>(1, 2.5);
+    jv->name = joint_names[i] + "_vel";
+    jv->term_type = TT_COST;
+    jv->first_step = 0;
+    jv->last_step = steps_ - 1;
+    jv->joint_name = joint_names[i];
+    jv->penalty_type = sco::SQUARED;
+    pci.cost_infos.push_back(jv);
+  }
 
   std::shared_ptr<CollisionCostInfo> collision = std::shared_ptr<CollisionCostInfo>(new CollisionCostInfo);
   collision->name = "collision";
