@@ -46,7 +46,7 @@ public:
   srdf::ModelSharedPtr srdf_model_;            /**< SRDF Model */
   tesseract_ros::KDLEnvPtr env_;               /**< Trajopt Basic Environment */
   tesseract_ros::ROSBasicPlottingPtr plotter_; /**< Trajopt Plotter */
-  std::vector<Affine3d> pose_inverses_;
+  std::vector<Isometry3d> pose_inverses_;
   std::string constraint_type_;
   double tol_;
 
@@ -72,7 +72,7 @@ public:
       Vector3d xyz(0.5, y[i], 0.62);
       Vector4d wxyz(0.0, 0.0, 1.0, 0.0);
 
-      Affine3d cur_pose;
+      Isometry3d cur_pose;
       cur_pose.translation() = xyz;
       Quaterniond q(wxyz(0), wxyz(1), wxyz(2), wxyz(3));
       cur_pose.linear() = q.matrix();
@@ -125,7 +125,7 @@ public:
       Vector3d xyz(0.5, -0.2 + delta * i, 0.62);
       Vector4d wxyz(0.0, 0.0, 1.0, 0.0);
 
-      Affine3d cur_pose;
+      Isometry3d cur_pose;
       cur_pose.translation() = xyz;
       Quaterniond q(wxyz(0), wxyz(1), wxyz(2), wxyz(3));
       cur_pose.linear() = q.matrix();
@@ -216,7 +216,7 @@ public:
 
     AttachableObjectPtr obj(new AttachableObject());
     shapes::OcTree* octomap_world = new shapes::OcTree(std::shared_ptr<const octomap::OcTree>(octree));
-    Eigen::Affine3d octomap_pose;
+    Eigen::Isometry3d octomap_pose;
 
     octomap_pose.setIdentity();
     octomap_pose.translation() = Eigen::Vector3d(1, 0, 0);
@@ -230,7 +230,7 @@ public:
     AttachedBodyInfo attached_body;
     attached_body.object_name = "octomap_attached";
     attached_body.parent_link_name = "base_link";
-    attached_body.transform = Eigen::Affine3d::Identity();
+    attached_body.transform = Eigen::Isometry3d::Identity();
     env_->attachBody(attached_body);
 
     // Set the robot initial state
@@ -313,7 +313,7 @@ TEST_P(AngularConstraintTest, AngularConstraint)
     auto manip = prob->GetKin();
     auto change_base = env_->getLinkTransform(manip->getBaseLinkName());
 
-    Affine3d tcp;
+    Isometry3d tcp;
     tcp.setIdentity();
 
     TrajArray traj = getTraj(opt.x(), prob->GetVars());
@@ -325,11 +325,11 @@ TEST_P(AngularConstraintTest, AngularConstraint)
         joint_angles(k) = traj(j, k);
       }
 
-      Affine3d pose;
+      Isometry3d pose;
       manip->calcFwdKin(pose, change_base, joint_angles);
 
-      Affine3d pose_inv = pose_inverses_.at(j);
-      Affine3d err = pose_inv * (pose * tcp);
+      Isometry3d pose_inv = pose_inverses_.at(j);
+      Isometry3d err = pose_inv * (pose * tcp);
 
       if (constraint_type_ == "aligned")
       {

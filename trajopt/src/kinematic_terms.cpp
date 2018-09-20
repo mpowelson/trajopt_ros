@@ -179,7 +179,7 @@ VectorXd CartVelCalculator::operator()(const VectorXd& dof_vals) const
 VectorXd AlignedAxisErrCalculator::operator()(const VectorXd& dof_vals) const
 {
   // calculate the current pose given the DOF values for the robot
-  Affine3d new_pose, change_base;
+  Isometry3d new_pose, change_base;
   change_base = env_->getLinkTransform(manip_->getBaseLinkName());
   manip_->calcFwdKin(new_pose, change_base, dof_vals, link_, *env_->getState());
 
@@ -205,7 +205,7 @@ VectorXd AlignedAxisErrCalculator::operator()(const VectorXd& dof_vals) const
 VectorXd ConicalAxisErrCalculator::operator()(const VectorXd& dof_vals) const
 {
   // calculate the current pose given the DOF values for the robot
-  Affine3d new_pose, change_base;
+  Isometry3d new_pose, change_base;
   change_base = env_->getLinkTransform(manip_->getBaseLinkName());
   manip_->calcFwdKin(new_pose, change_base, dof_vals, link_, *env_->getState());
 
