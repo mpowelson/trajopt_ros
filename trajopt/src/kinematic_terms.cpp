@@ -110,7 +110,7 @@ MatrixXd CartVelJacCalculator::operator()(const VectorXd& var_vals) const
     manip_->calcJacobian(jac1, change_base, joints1, link_, *state, tcp_.translation());
   }
 
-  Affine3d pose0, pose1;
+  Isometry3d pose0, pose1;
   manip_->calcFwdKin(pose0, change_base, joints0, link_, *state);
   manip_->calcFwdKin(pose1, change_base, joints1, link_, *state);
 
