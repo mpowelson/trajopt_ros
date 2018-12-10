@@ -13,7 +13,6 @@ TRAJOPT_IGNORE_WARNINGS_POP
 
 namespace trajopt
 {
-
 /**
  * @brief Used to calculate the error for CartPoseTermInfo
  * This is converted to a cost or constraint using TrajOptCostFromErrFunc or TrajOptConstraintFromErrFunc
@@ -27,10 +26,10 @@ struct DynamicCartPoseErrCalculator : public TrajOptVectorOfVector
   std::string link_;
   Eigen::Isometry3d tcp_;
   DynamicCartPoseErrCalculator(const std::string& target,
-                        tesseract::BasicKinConstPtr manip,
-                        tesseract::BasicEnvConstPtr env,
-                        std::string link,
-                        Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
+                               tesseract::BasicKinConstPtr manip,
+                               tesseract::BasicEnvConstPtr env,
+                               std::string link,
+                               Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
     : target_(target), manip_(manip), env_(env), link_(link), tcp_(tcp)
   {
   }
@@ -53,10 +52,10 @@ struct CartPoseErrCalculator : public TrajOptVectorOfVector
   std::string link_;
   Eigen::Isometry3d tcp_;
   CartPoseErrCalculator(const Eigen::Isometry3d& pose,
-                              tesseract::BasicKinConstPtr manip,
-                              tesseract::BasicEnvConstPtr env,
-                              std::string link,
-                              Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
+                        tesseract::BasicKinConstPtr manip,
+                        tesseract::BasicEnvConstPtr env,
+                        std::string link,
+                        Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
     : pose_inv_(pose.inverse()), manip_(manip), env_(env), link_(link), tcp_(tcp)
   {
   }
@@ -103,14 +102,80 @@ struct CartVelErrCalculator : sco::VectorOfVector
   double limit_;
   Eigen::Isometry3d tcp_;
   CartVelErrCalculator(tesseract::BasicKinConstPtr manip,
-                    tesseract::BasicEnvConstPtr env,
-                    std::string link,
-                    double limit,
-                    Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
+                       tesseract::BasicEnvConstPtr env,
+                       std::string link,
+                       double limit,
+                       Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
     : manip_(manip), env_(env), link_(link), limit_(limit), tcp_(tcp)
   {
   }
 
   Eigen::VectorXd operator()(const Eigen::VectorXd& dof_vals) const override;
 };
-}
+
+struct JointVelErrCalculator : sco::VectorOfVector
+{
+  /** @brief Velocity target */
+  double target_;
+  /** @brief Upper tolerance */
+  double upper_tol_;
+  /** @brief Lower tolerance */
+  double lower_tol_;
+  JointVelErrCalculator() : target_(0.0), upper_tol_(0.0), lower_tol_(0.0) {}
+  JointVelErrCalculator(double target, double upper_tol, double lower_tol)
+    :  target_(target), upper_tol_(upper_tol), lower_tol_(lower_tol)
+  {
+  }
+  Eigen::VectorXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct JointVelJacCalculator : sco::MatrixOfVector
+{
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct JointAccErrCalculator : sco::VectorOfVector
+{
+  JointVelErrCalculator vel_calc;
+  double limit_;
+  JointAccErrCalculator() : limit_(0.0) {}
+  JointAccErrCalculator(double limit) : limit_(limit) {}
+  Eigen::VectorXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct JointAccJacCalculator : sco::MatrixOfVector
+{
+  JointVelErrCalculator vel_calc;
+  JointVelJacCalculator vel_jac_calc;
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct JointJerkErrCalculator : sco::VectorOfVector
+{
+  JointAccErrCalculator acc_calc;
+  double limit_;
+  JointJerkErrCalculator() : limit_(0.0) {}
+  JointJerkErrCalculator(double limit) : limit_(limit) {}
+  Eigen::VectorXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct JointJerkJacCalculator : sco::MatrixOfVector
+{
+  JointAccErrCalculator acc_calc;
+  JointAccJacCalculator acc_jac_calc;
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct TimeCostCalculator : sco::VectorOfVector
+{
+  double limit_;
+  TimeCostCalculator(double limit) : limit_(limit) {}
+  Eigen::VectorXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+struct TimeCostJacCalculator : sco::MatrixOfVector
+{
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const;
+};
+
+}  // namespace trajopt
