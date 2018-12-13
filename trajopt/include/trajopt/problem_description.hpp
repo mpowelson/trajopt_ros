@@ -276,6 +276,7 @@ struct CartVelTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(CartVelTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   CartVelTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
@@ -309,6 +310,7 @@ struct JointPosTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointPosTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointPosTermInfo() : TermInfo(TT_COST | TT_CNT | TT_USE_TIME) {}
 };
 
@@ -358,7 +360,8 @@ struct JointVelTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointVelTermInfo)
 
-  JointVelTermInfo() : TermInfo(TT_COST | TT_CNT) {}
+  /** @brief Initialize term with it's supported types */
+  JointVelTermInfo() : TermInfo(TT_COST | TT_CNT | TT_USE_TIME) {}
 };
 
 /**
@@ -402,6 +405,7 @@ struct JointAccTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointAccTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointAccTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
@@ -446,6 +450,7 @@ struct JointJerkTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointJerkTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointJerkTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
