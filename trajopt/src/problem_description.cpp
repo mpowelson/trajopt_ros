@@ -688,36 +688,73 @@ void CartVelTermInfo::hatch(TrajOptProb& prob)
 
   if (term_type == (TT_COST | TT_USE_TIME))
   {
-    ROS_ERROR("Use time version of this term has not been defined.");
+      for (int timestep = first_step; timestep < last_step; ++timestep)
+      {
+          // Get VarVector of joint values only
+          sco::VarVector j1 = prob.GetVarRow(timestep, 0, n_dof);;
+          sco::VarVector j2 = prob.GetVarRow(timestep + 1, 0, n_dof);
+          // Get VarVector of (1/dt) values
+          sco::VarVector dt(prob.GetVarRow(timestep + 1).end(), prob.GetVarRow(timestep + 1).end());
+
+        prob.addCost(sco::CostPtr(new TrajOptCostFromErrFunc(
+            sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement, true)),
+            sco::MatrixOfVectorPtr(new CartVelJacCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
+            concat(concat(j1, j2),dt),
+            Eigen::VectorXd::Ones(0),
+            sco::ABS,
+            name + "_t" + std::to_string(timestep))));
+      }
   }
   else if (term_type == (TT_CNT | TT_USE_TIME))
   {
-    ROS_ERROR("Use time version of this term has not been defined.");
+      for (int timestep = first_step; timestep < last_step; ++timestep)      {
+          // Get VarVector of joint values only
+          sco::VarVector j1 = prob.GetVarRow(timestep, 0, n_dof);
+          sco::VarVector j2 = prob.GetVarRow(timestep + 1, 0, n_dof);
+          // Get VarVector of (1/dt) values
+          sco::VarVector dt(prob.GetVarRow(timestep + 1).end(), prob.GetVarRow(timestep = + 1).end());
+
+        prob.addConstraint(sco::ConstraintPtr(new TrajOptConstraintFromErrFunc(
+            sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement, true)),
+            sco::MatrixOfVectorPtr(new CartVelJacCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
+            concat(concat(j1, j2), dt),
+            Eigen::VectorXd::Ones(0),
+            sco::INEQ,
+            name + "_t" + std::to_string(timestep))));
+      }
   }
   else if ((term_type & TT_COST) && ~(term_type | ~TT_USE_TIME))
   {
-    for (int iStep = first_step; iStep < last_step; ++iStep)
+    for (int timestep = first_step; timestep < last_step; ++timestep)
     {
+        // Get VarVector of joint values only
+        sco::VarVector j1 = prob.GetVarRow(timestep, 0, n_dof);
+        sco::VarVector j2 = prob.GetVarRow(timestep + 1, 0, n_dof);
+
       prob.addCost(sco::CostPtr(new TrajOptCostFromErrFunc(
-          sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
+          sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement, false)),
           sco::MatrixOfVectorPtr(new CartVelJacCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
-          concat(prob.GetVarRow(iStep, 0, n_dof), prob.GetVarRow(iStep + 1, 0, n_dof)),
+          concat(j1, j2),
           Eigen::VectorXd::Ones(0),
           sco::ABS,
-          name)));
+          name + "_t" + std::to_string(timestep))));
     }
   }
   else if ((term_type & TT_CNT) && ~(term_type | ~TT_USE_TIME))
   {
-    for (int iStep = first_step; iStep < last_step; ++iStep)
+    for (int timestep = first_step; timestep < last_step; ++timestep)
     {
+        // Get VarVector of joint values only
+        sco::VarVector j1 = prob.GetVarRow(timestep, 0, n_dof);
+        sco::VarVector j2 = prob.GetVarRow(timestep + 1, 0, n_dof);
+
       prob.addConstraint(sco::ConstraintPtr(new TrajOptConstraintFromErrFunc(
-          sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
+          sco::VectorOfVectorPtr(new CartVelErrCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement, false)),
           sco::MatrixOfVectorPtr(new CartVelJacCalculator(prob.GetKin(), prob.GetEnv(), link, max_displacement)),
-          concat(prob.GetVarRow(iStep, 0, n_dof), prob.GetVarRow(iStep + 1, 0, n_dof)),
+          concat(j1, j2),
           Eigen::VectorXd::Ones(0),
           sco::INEQ,
-          "CartVel")));
+          name + "_t" + std::to_string(timestep))));
     }
   }
   else

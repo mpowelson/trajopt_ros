@@ -113,17 +113,20 @@ void CartPoseErrCalculator::Plot(const tesseract::BasicPlottingPtr& plotter, con
   plotter->plotArrow(cur_pose.translation(), target.translation(), Eigen::Vector4d(1, 0, 1, 1), 0.005);
 }
 
-MatrixXd CartVelJacCalculator::operator()(const VectorXd& dof_vals) const
+MatrixXd CartVelJacCalculator::operator()(const VectorXd& var_vals) const
 {
+  // var_vals = [j1_t1, j2_t1, ... jn_t1, j1_t2, j2_t2, ... jn_t2, (1/dt)]
   int n_dof = static_cast<int>(manip_->numJoints());
-  MatrixXd out(6, 2 * n_dof);
 
   tesseract::EnvStateConstPtr state = env_->getState();
   Isometry3d change_base = state->transforms.at(manip_->getBaseLinkName());
-  assert(change_base.isApprox(
-      env_->getState(manip_->getJointNames(), dof_vals.topRows(n_dof))->transforms.at(manip_->getBaseLinkName())));
-  assert(change_base.isApprox(
-      env_->getState(manip_->getJointNames(), dof_vals.bottomRows(n_dof))->transforms.at(manip_->getBaseLinkName())));
+  // Get joint values.
+  VectorXd joints0 = var_vals.topRows(n_dof);
+  VectorXd joints1 = var_vals.segment(n_dof, n_dof);
+  assert(
+      change_base.isApprox(env_->getState(manip_->getJointNames(), joints0)->transforms.at(manip_->getBaseLinkName())));
+  assert(
+      change_base.isApprox(env_->getState(manip_->getJointNames(), joints1)->transforms.at(manip_->getBaseLinkName())));
 
   MatrixXd jac0, jac1;
   jac0.resize(6, manip_->numJoints());
@@ -131,43 +134,80 @@ MatrixXd CartVelJacCalculator::operator()(const VectorXd& dof_vals) const
 
   if (tcp_.translation().isZero())
   {
-    manip_->calcJacobian(jac0, change_base, dof_vals.topRows(n_dof), link_, *state);
-    manip_->calcJacobian(jac1, change_base, dof_vals.bottomRows(n_dof), link_, *state);
+    manip_->calcJacobian(jac0, change_base, joints0, link_, *state);
+    manip_->calcJacobian(jac1, change_base, joints1, link_, *state);
   }
   else
   {
-    manip_->calcJacobian(jac0, change_base, dof_vals.topRows(n_dof), link_, *state, tcp_.translation());
-    manip_->calcJacobian(jac1, change_base, dof_vals.bottomRows(n_dof), link_, *state, tcp_.translation());
+    manip_->calcJacobian(jac0, change_base, joints0, link_, *state, tcp_.translation());
+    manip_->calcJacobian(jac1, change_base, joints1, link_, *state, tcp_.translation());
   }
 
-  out.block(0, 0, 3, n_dof) = -jac0.topRows(3);
-  out.block(0, n_dof, 3, n_dof) = jac1.topRows(3);
-  out.block(3, 0, 3, n_dof) = jac0.topRows(3);
-  out.block(3, n_dof, 3, n_dof) = -jac1.topRows(3);
+  // 6 rows for (x, y, z, -x, -y, -z)
+  MatrixXd out = MatrixXd::Zero(6, var_vals.rows());
+
+  bool use_time;
+  if (use_time)
+  {
+    Isometry3d pose0, pose1;
+    manip_->calcFwdKin(pose0, change_base, joints0, link_, *state);
+    manip_->calcFwdKin(pose1, change_base, joints1, link_, *state);
+
+    pose0 = pose0 * tcp_;
+    pose1 = pose1 * tcp_;
+
+    double dt = var_vals(var_vals.rows() - 1);
+    out.block(0, 0, 3, n_dof) = -jac0.topRows(3) * dt;
+    out.block(0, n_dof + 1, 3, n_dof) = jac1.topRows(3) * dt;
+
+    // dx/d(dt) = x1-x2
+    out.block(0, out.cols() - 1, 3, 1) = (pose1.translation() - pose0.translation());
+
+    // bottom half is negative of top half (Jacobian for negative velocity)
+    out.block(3, 0, 3, out.cols()) = -out.block(0, 0, 3, out.cols());
+  }
+  else
+  {
+    out.block(0, 0, 3, n_dof) = -jac0.topRows(3);
+    out.block(0, n_dof, 3, n_dof) = jac1.topRows(3);
+    out.block(3, 0, 3, n_dof) = jac0.topRows(3);
+    out.block(3, n_dof, 3, n_dof) = -jac1.topRows(3);
+  }
+
   return out;
 }
 
-VectorXd CartVelErrCalculator::operator()(const VectorXd& dof_vals) const
+VectorXd CartVelErrCalculator::operator()(const VectorXd& var_vals) const
 {
+  // var_vals = [j1_t1, j2_t1, ... jn_t1, j1_t2, j2_t2, ... jn_t2, (1/dt)]
   int n_dof = static_cast<int>(manip_->numJoints());
   Isometry3d pose0, pose1, change_base;
 
   tesseract::EnvStateConstPtr state = env_->getState();
   change_base = state->transforms.at(manip_->getBaseLinkName());
-  assert(change_base.isApprox(
-      env_->getState(manip_->getJointNames(), dof_vals.topRows(n_dof))->transforms.at(manip_->getBaseLinkName())));
-  assert(change_base.isApprox(
-      env_->getState(manip_->getJointNames(), dof_vals.bottomRows(n_dof))->transforms.at(manip_->getBaseLinkName())));
 
-  manip_->calcFwdKin(pose0, change_base, dof_vals.topRows(n_dof), link_, *state);
-  manip_->calcFwdKin(pose1, change_base, dof_vals.bottomRows(n_dof), link_, *state);
+  // Get joint values.
+  VectorXd joints0 = var_vals.topRows(n_dof);
+  VectorXd joints1 = var_vals.segment(n_dof, n_dof);
+  assert(
+      change_base.isApprox(env_->getState(manip_->getJointNames(), joints0)->transforms.at(manip_->getBaseLinkName())));
+  assert(
+      change_base.isApprox(env_->getState(manip_->getJointNames(), joints1)->transforms.at(manip_->getBaseLinkName())));
+
+  manip_->calcFwdKin(pose0, change_base, joints0, link_, *state);
+  manip_->calcFwdKin(pose1, change_base, joints1, link_, *state);
 
   pose0 = pose0 * tcp_;
   pose1 = pose1 * tcp_;
 
+  // Get 1/dt value. If use_time_, then get last value in var_vals. Else, set to 1 (do nothing)
+  double dt = (use_time_ ? var_vals(var_vals.rows() - 1) : 1);
+  //  This might be faster?
+  //  double dt = var_vals(var_vals.rows() - 1) * static_cast<double>(use_time_) + 1 * static_cast<double>(!use_time_) ;
+
   VectorXd out(6);
-  out.topRows(3) = (pose1.translation() - pose0.translation() - Vector3d(limit_, limit_, limit_));
-  out.bottomRows(3) = (pose0.translation() - pose1.translation() - Vector3d(limit_, limit_, limit_));
+  out.topRows(3) = (pose1.translation() - pose0.translation()) * dt - Vector3d(limit_, limit_, limit_);
+  out.bottomRows(3) = (pose0.translation() - pose1.translation()) * dt - Vector3d(limit_, limit_, limit_);
   return out;
 }
 
@@ -212,7 +252,6 @@ MatrixXd JointVelJacCalculator::operator()(const VectorXd& var_vals) const
 
   // bottom half is negative velocities
   jac.bottomRows(num_vels) = -jac.topRows(num_vels);
-
 
   return jac;
 }

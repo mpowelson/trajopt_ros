@@ -101,12 +101,14 @@ struct CartVelErrCalculator : sco::VectorOfVector
   std::string link_;
   double limit_;
   Eigen::Isometry3d tcp_;
+  bool use_time_;
   CartVelErrCalculator(tesseract::BasicKinConstPtr manip,
                        tesseract::BasicEnvConstPtr env,
                        std::string link,
                        double limit,
+                       bool use_time,
                        Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity())
-    : manip_(manip), env_(env), link_(link), limit_(limit), tcp_(tcp)
+    : manip_(manip), env_(env), link_(link), limit_(limit), tcp_(tcp), use_time_(use_time)
   {
   }
 
