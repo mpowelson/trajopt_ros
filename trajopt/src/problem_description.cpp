@@ -1,4 +1,4 @@
-#include <trajopt_utils/macros.h>
+﻿#include <trajopt_utils/macros.h>
 TRAJOPT_IGNORE_WARNINGS_PUSH
 #include <boost/algorithm/string.hpp>
 #include <ros/ros.h>
@@ -191,8 +191,6 @@ void ProblemConstructionInfo::readConstraints(const Json::Value& v)
 
     if (!term)
       PRINT_AND_THROW(boost::format("failed to construct constraint named %s") % type);
-    if (!(term->GetSupportedTypes() & TT_CNT))
-      PRINT_AND_THROW(boost::format("%s is only a cost, but you listed it as a constraint") % type);
 
     if (boost::iequals(use_time_str, "true"))
     {
@@ -378,7 +376,7 @@ TrajOptProbPtr ConstructProblem(const ProblemConstructionInfo& pci)
   for (TermInfoPtr cost : pci.cost_infos)
   {
     if (cost->term_type & TT_CNT)
-        ROS_WARN("%s is listed as a type TT_CNT but was added to cost_infos", (cost->name).c_str());
+      ROS_WARN("%s is listed as a type TT_CNT but was added to cost_infos", (cost->name).c_str());
     if (!(cost->getSupportedTypes() & TT_COST))
       PRINT_AND_THROW(boost::format("%s is only a constraint, but you listed it as a cost") % cost->name);
     if (cost->term_type & TT_USE_TIME)
@@ -391,7 +389,7 @@ TrajOptProbPtr ConstructProblem(const ProblemConstructionInfo& pci)
   for (TermInfoPtr cnt : pci.cnt_infos)
   {
     if (cnt->term_type & TT_COST)
-       ROS_WARN("%s is listed as a type TT_COST but was added to cnt_infos", (cnt->name).c_str());
+      ROS_WARN("%s is listed as a type TT_COST but was added to cnt_infos", (cnt->name).c_str());
     if (!(cnt->getSupportedTypes() & TT_CNT))
       PRINT_AND_THROW(boost::format("%s is only a cost, but you listed it as a constraint") % cnt->name);
     if (cnt->term_type & TT_USE_TIME)
@@ -563,7 +561,7 @@ void DynamicCartPoseTermInfo::fromJson(ProblemConstructionInfo& pci, const Json:
 
 void DynamicCartPoseTermInfo::hatch(TrajOptProb& prob)
 {
-    unsigned int n_dof = prob.GetKin()->numJoints();
+  unsigned int n_dof = prob.GetKin()->numJoints();
 
   if (term_type & TT_USE_TIME)
   {
@@ -629,7 +627,7 @@ void CartPoseTermInfo::fromJson(ProblemConstructionInfo& pci, const Json::Value&
 
 void CartPoseTermInfo::hatch(TrajOptProb& prob)
 {
-    unsigned int n_dof = prob.GetKin()->numJoints();
+  unsigned int n_dof = prob.GetKin()->numJoints();
 
   Eigen::Isometry3d input_pose;
   Eigen::Quaterniond q(wxyz(0), wxyz(1), wxyz(2), wxyz(3));
@@ -647,14 +645,14 @@ void CartPoseTermInfo::hatch(TrajOptProb& prob)
   else if ((term_type & TT_COST) && ~(term_type | ~TT_USE_TIME))
   {
     sco::VectorOfVectorPtr f(new CartPoseErrCalculator(input_pose, prob.GetKin(), prob.GetEnv(), link, tcp));
-    prob.addCost(sco::CostPtr(
-        new TrajOptCostFromErrFunc(f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::ABS, name)));
+    prob.addCost(sco::CostPtr(new TrajOptCostFromErrFunc(
+        f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::ABS, name)));
   }
   else if ((term_type & TT_CNT) && ~(term_type | ~TT_USE_TIME))
   {
     sco::VectorOfVectorPtr f(new CartPoseErrCalculator(input_pose, prob.GetKin(), prob.GetEnv(), link, tcp));
-    prob.addConstraint(sco::ConstraintPtr(
-        new TrajOptConstraintFromErrFunc(f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::EQ, name)));
+    prob.addConstraint(sco::ConstraintPtr(new TrajOptConstraintFromErrFunc(
+        f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::EQ, name)));
   }
   else
   {
@@ -686,7 +684,7 @@ void CartVelTermInfo::fromJson(ProblemConstructionInfo& pci, const Json::Value& 
 
 void CartVelTermInfo::hatch(TrajOptProb& prob)
 {
-    unsigned int n_dof = prob.GetKin()->numJoints();
+  unsigned int n_dof = prob.GetKin()->numJoints();
 
   if (term_type == (TT_COST | TT_USE_TIME))
   {
@@ -792,7 +790,7 @@ void JointPosTermInfo::hatch(TrajOptProb& prob)
   trajopt::VarArray vars = prob.GetVars();
   trajopt::VarArray joint_vars = vars.block(0, 0, vars.rows(), n_dof);
   if (prob.GetHasTime())
-        ROS_INFO("JointPosTermInfo does not differ based on setting of TT_USE_TIME");
+    ROS_INFO("JointPosTermInfo does not differ based on setting of TT_USE_TIME");
 
   if (term_type & TT_COST)
   {
@@ -908,18 +906,14 @@ void JointVelTermInfo::hatch(TrajOptProb& prob)
 
   if (term_type == (TT_COST | TT_USE_TIME))
   {
-    sco::VarVector joint_vars_vec(static_cast<std::size_t>(last_step - first_step + 1));
-    sco::VarVector time_vars_vec(static_cast<std::size_t>(last_step - first_step + 1));
     unsigned num_vels = last_step - first_step;
 
     // Apply seperate cost to each joint b/c that is how the error function is currently written
     for (size_t j = 0; j < n_dof; j++)
     {
-      for (size_t i = first_step; i < last_step + 1; i++)
-      {
-        joint_vars_vec[i - first_step] = prob.GetVar(i, j);
-        time_vars_vec[i - first_step] = prob.GetVar(i, prob.GetNumDOF() - 1);
-      }
+      // Get a vector of a single column of vars
+      sco::VarVector joint_vars_vec = joint_vars.cblock(first_step, j, last_step - first_step + 1);
+      sco::VarVector time_vars_vec = vars.cblock(first_step, vars.cols() - 1, last_step - first_step + 1);
 
       // If the tolerances are 0, an equality cost is set
       if (is_upper_zeros && is_lower_zeros)
@@ -949,18 +943,14 @@ void JointVelTermInfo::hatch(TrajOptProb& prob)
   }
   else if (term_type == (TT_CNT | TT_USE_TIME))
   {
-    sco::VarVector joint_vars_vec(static_cast<std::size_t>(last_step - first_step + 1));
-    sco::VarVector time_vars_vec(static_cast<std::size_t>(last_step - first_step + 1));
     unsigned num_vels = last_step - first_step;
 
     // Apply seperate cnt to each joint b/c that is how the error function is currently written
     for (size_t j = 0; j < n_dof; j++)
     {
-      for (size_t i = first_step; i < last_step + 1; i++)
-      {
-        joint_vars_vec[i - first_step] = prob.GetVar(i, j);
-        time_vars_vec[i - first_step] = prob.GetVar(i, prob.GetNumDOF() - 1);
-      }
+      // Get a vector of a single column of vars
+      sco::VarVector joint_vars_vec = joint_vars.cblock(first_step, j, last_step - first_step + 1);
+      sco::VarVector time_vars_vec = vars.cblock(first_step, vars.cols() - 1, last_step - first_step + 1);
 
       // If the tolerances are 0, an equality cnt is set
       if (is_upper_zeros && is_lower_zeros)
@@ -1374,15 +1364,18 @@ void CollisionTermInfo::fromJson(ProblemConstructionInfo& pci, const Json::Value
 
 void CollisionTermInfo::hatch(TrajOptProb& prob)
 {
-    unsigned int n_dof = prob.GetKin()->numJoints();
+  unsigned int n_dof = prob.GetKin()->numJoints();
   if (term_type == TT_COST)
   {
     if (continuous)
     {
       for (int i = first_step; i <= last_step - gap; ++i)
       {
-        prob.addCost(sco::CostPtr(new CollisionCost(
-            prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof), prob.GetVarRow(i + gap, 0, n_dof))));
+        prob.addCost(sco::CostPtr(new CollisionCost(prob.GetKin(),
+                                                    prob.GetEnv(),
+                                                    info[static_cast<size_t>(i - first_step)],
+                                                    prob.GetVarRow(i, 0, n_dof),
+                                                    prob.GetVarRow(i + gap, 0, n_dof))));
         prob.getCosts().back()->setName((boost::format("%s_%i") % name.c_str() % i).str());
       }
     }
@@ -1390,8 +1383,8 @@ void CollisionTermInfo::hatch(TrajOptProb& prob)
     {
       for (int i = first_step; i <= last_step; ++i)
       {
-        prob.addCost(
-            sco::CostPtr(new CollisionCost(prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof))));
+        prob.addCost(sco::CostPtr(new CollisionCost(
+            prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof))));
         prob.getCosts().back()->setName((boost::format("%s_%i") % name.c_str() % i).str());
       }
     }
@@ -1402,8 +1395,11 @@ void CollisionTermInfo::hatch(TrajOptProb& prob)
     {
       for (int i = first_step; i < last_step; ++i)
       {
-        prob.addIneqConstraint(sco::ConstraintPtr(new CollisionConstraint(
-            prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof), prob.GetVarRow(i + 1, 0, n_dof))));
+        prob.addIneqConstraint(sco::ConstraintPtr(new CollisionConstraint(prob.GetKin(),
+                                                                          prob.GetEnv(),
+                                                                          info[static_cast<size_t>(i - first_step)],
+                                                                          prob.GetVarRow(i, 0, n_dof),
+                                                                          prob.GetVarRow(i + 1, 0, n_dof))));
         prob.getIneqConstraints().back()->setName((boost::format("%s_%i") % name.c_str() % i).str());
       }
     }
@@ -1411,8 +1407,8 @@ void CollisionTermInfo::hatch(TrajOptProb& prob)
     {
       for (int i = first_step; i <= last_step; ++i)
       {
-        prob.addIneqConstraint(sco::ConstraintPtr(
-            new CollisionConstraint(prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof))));
+        prob.addIneqConstraint(sco::ConstraintPtr(new CollisionConstraint(
+            prob.GetKin(), prob.GetEnv(), info[static_cast<size_t>(i - first_step)], prob.GetVarRow(i, 0, n_dof))));
         prob.getIneqConstraints().back()->setName((boost::format("%s_%i") % name.c_str() % i).str());
       }
     }
