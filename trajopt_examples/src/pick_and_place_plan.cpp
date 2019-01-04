@@ -27,7 +27,7 @@ int main(int argc, char** argv)
   nh.param<bool>("/pick_and_place_node/file_write_cb", file_write_cb, false);
 
   // Set Log Level
-  util::gLogLevel = util::LevelInfo;
+  util::gLogLevel = util::LevelFatal;
   if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Error))
   {
     ros::console::notifyLoggerLevelsChanged();
@@ -53,8 +53,7 @@ int main(int argc, char** argv)
                                     0.01653956, /*0.04961867,*/ 0.08269778,   /*0.11577689,*/ 0.148856 };
 
   unsigned long num_iter = pick_points_x.size() * pick_points_y.size() * place_points.size() * num_steps.size();
-  std::string solver_string = "Unspecified";
-  sco::ModelType solver = sco::ModelType::BPMPD;
+  sco::ModelType solver = sco::ModelType::QPOASES;
   std::cout << "Processing " << num_iter << " iterations";
 
   std::ofstream ofs;
@@ -71,7 +70,6 @@ int main(int argc, char** argv)
       << "place_time,"
       << "pick_collision,"
       << "place_collision,"
-         " "
       << "pick status,"
       << "place status,"
       << "pick status code,"
@@ -158,8 +156,8 @@ int main(int argc, char** argv)
           /// PICK ///
           ////////////
 
-            ROS_ERROR("Press enter to continue");
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//            ROS_ERROR("Press enter to continue");
+//            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Create the planner and the responses that will store the results
           tesseract::tesseract_planning::TrajOptPlanner planner;
@@ -333,7 +331,7 @@ int main(int argc, char** argv)
 
           // Setup approach for place move
           approach_pose = final_pose;
-          approach_pose.translation() += Eigen::Vector3d(0.0, -0.2, 0);
+          approach_pose.translation() += Eigen::Vector3d(0.0, -0.25, 0);
 
           // Create the problem construction info
           trajopt::ProblemConstructionInfo pci_place(env);
@@ -405,39 +403,41 @@ int main(int argc, char** argv)
             pci_place.cnt_infos.push_back(pose_constraint);
           }
 
-          // Add cartesian pose cnt at the approach point
-          if (true)
-          {
-            Eigen::Quaterniond rotation(approach_pose.linear());
-            std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
-                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
-            pose_constraint->term_type = trajopt::TT_CNT;
-            pose_constraint->link = end_effector;
-            pose_constraint->timestep = 2 * steps_per_phase - 1;
-            pose_constraint->xyz = approach_pose.translation();
+//          // Add cartesian pose cnt at the approach point
+//          if (true)
+//          {
+//            Eigen::Quaterniond rotation(approach_pose.linear());
+//            std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
+//                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
+//            pose_constraint->term_type = trajopt::TT_CNT;
+//            pose_constraint->link = end_effector;
+//            pose_constraint->timestep = 2 * steps_per_phase - 1;
+//            pose_constraint->xyz = approach_pose.translation();
 
-            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
-            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase - 1);
-            pci_place.cnt_infos.push_back(pose_constraint);
-          }
+//            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
+//            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+//            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+//            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase - 1);
+//            pci_place.cnt_infos.push_back(pose_constraint);
+//          }
 
           // Add cartesian pose cnt at the final point
-          for (int i = 2*steps_per_phase; i < 3*steps_per_phase; i++)
+          int steps = 3*steps_per_phase - 2*steps_per_phase;
+          for(int index=1; index < steps; index++)
           {
             Eigen::Quaterniond rotation(final_pose.linear());
             std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
                 std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
             pose_constraint->term_type = trajopt::TT_CNT;
             pose_constraint->link = end_effector;
-            pose_constraint->timestep = i;
-            pose_constraint->xyz = final_pose
+            pose_constraint->timestep = 2 * steps_per_phase + index;
+            pose_constraint->xyz = approach_pose.translation();
+            pose_constraint->xyz.y() = approach_pose.translation().y() + 0.25/steps*index;
 
             pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
             pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
             pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->name = "pose_" + std::to_string(i);
+            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase + index);
             pci_place.cnt_infos.push_back(pose_constraint);
           }
 
@@ -470,8 +470,8 @@ int main(int argc, char** argv)
                                                                             collisions);
           }
 
-                    plotter.plotTrajectory(env->getJointNames(),
-                                           planning_response_place.trajectory.leftCols(env->getJointNames().size()));
+//                    plotter.plotTrajectory(env->getJointNames(),
+//                                           planning_response_place.trajectory.leftCols(env->getJointNames().size()));
 
           // Print results to terminal
           std::cout << "Iter: " << ind << "/" << num_iter << " Pick point: " << box_x << ", " << box_y
