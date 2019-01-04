@@ -5,6 +5,7 @@
 
 #include <urdf_parser/urdf_parser.h>
 #include <fstream>
+#include <ros/console.h>
 
 #include <trajopt/file_write_callback.hpp>
 #include <trajopt/plot_callback.hpp>
@@ -27,7 +28,11 @@ int main(int argc, char** argv)
 
   // Set Log Level
   util::gLogLevel = util::LevelInfo;
-
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Error))
+  {
+    ros::console::notifyLoggerLevelsChanged();
+  }
+  ros::console::shutdown();
   /////////////
   /// SETUP ///
   /////////////
@@ -65,7 +70,12 @@ int main(int argc, char** argv)
       << "pick_time,"
       << "place_time,"
       << "pick_collision,"
-      << "place_collision\n";
+      << "place_collision,"
+         " "
+      << "pick status,"
+      << "place status,"
+      << "pick status code,"
+      << "place status code\n";
 
   // Define outputs
   double pick_time;
@@ -96,8 +106,8 @@ int main(int argc, char** argv)
           bool success = env->init(urdf_model, srdf_model);
           assert(success);
 
-          ROS_ERROR("Press enter to continue");
-          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+          //          ROS_ERROR("Press enter to continue");
+          //          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Set the initial state of the robot
           std::unordered_map<std::string, double> joint_states;
@@ -148,8 +158,8 @@ int main(int argc, char** argv)
           /// PICK ///
           ////////////
 
-          //  ROS_ERROR("Press enter to continue");
-          //  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            ROS_ERROR("Press enter to continue");
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Create the planner and the responses that will store the results
           tesseract::tesseract_planning::TrajOptPlanner planner;
@@ -264,7 +274,7 @@ int main(int argc, char** argv)
 
           // Set the optimization parameters (Most are being left as defaults)
           tesseract::tesseract_planning::TrajOptPlannerConfig config(pick_prob);
-          config.params.max_iter = 100;
+          config.params.max_iter = 500;
 
           // Solve problem. Results are stored in the response
           ros::Time tStart1 = ros::Time::now();
@@ -282,15 +292,15 @@ int main(int argc, char** argv)
             pick_collision = tesseract::continuousCollisionCheckTrajectory(
                 *manager, *config.prob->GetEnv(), *config.prob->GetKin(), planning_response.trajectory, collisions);
           }
-          plotter.plotTrajectory(env->getJointNames(),
-                                 planning_response.trajectory.leftCols(env->getJointNames().size()));
+          //          plotter.plotTrajectory(env->getJointNames(),
+          //                                 planning_response.trajectory.leftCols(env->getJointNames().size()));
 
           /////////////
           /// PLACE ///
           /////////////
 
-          ROS_ERROR("Press enter to continue");
-          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+          //          ROS_ERROR("Press enter to continue");
+          //          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Detach the simulated box from the world and attach to the end effector
           env->detachBody("box");
@@ -351,7 +361,7 @@ int main(int argc, char** argv)
             collision->first_step = 0;
             collision->last_step = pci_place.basic_info.n_steps - 1;
             collision->gap = 1;
-            collision->info = trajopt::createSafetyMarginDataVector(pci_place.basic_info.n_steps, 0.075, 40);
+            collision->info = trajopt::createSafetyMarginDataVector(pci_place.basic_info.n_steps, 0.075, 100);
             pci_place.cost_infos.push_back(collision);
           }
 
@@ -414,20 +424,20 @@ int main(int argc, char** argv)
           }
 
           // Add cartesian pose cnt at the final point
-          if (true)
+          for (int i = 2*steps_per_phase; i < 3*steps_per_phase; i++)
           {
             Eigen::Quaterniond rotation(final_pose.linear());
             std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
                 std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
             pose_constraint->term_type = trajopt::TT_CNT;
             pose_constraint->link = end_effector;
-            pose_constraint->timestep = 3 * steps_per_phase - 1;
-            pose_constraint->xyz = final_pose.translation();
+            pose_constraint->timestep = i;
+            pose_constraint->xyz = final_pose
 
             pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
             pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
             pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->name = "pose_" + std::to_string(3 * steps_per_phase - 1);
+            pose_constraint->name = "pose_" + std::to_string(i);
             pci_place.cnt_infos.push_back(pose_constraint);
           }
 
@@ -436,14 +446,13 @@ int main(int argc, char** argv)
 
           // Set the optimization parameters
           tesseract::tesseract_planning::TrajOptPlannerConfig config_place(place_prob);
-          config_place.params.max_iter = 100;
+          config_place.params.max_iter = 500;
 
           // Solve problem
           ros::Time tStart2 = ros::Time::now();
           planner.solve(planning_response_place, config_place);
           place_time = (ros::Time::now() - tStart2).toSec();
-          std::cout << planning_response_place.status_code << "  " << planning_response_place.status_description
-                    << '\n';
+
 
           if (true)
           {
@@ -461,8 +470,8 @@ int main(int argc, char** argv)
                                                                             collisions);
           }
 
-          plotter.plotTrajectory(env->getJointNames(),
-                                 planning_response_place.trajectory.leftCols(env->getJointNames().size()));
+                    plotter.plotTrajectory(env->getJointNames(),
+                                           planning_response_place.trajectory.leftCols(env->getJointNames().size()));
 
           // Print results to terminal
           std::cout << "Iter: " << ind << "/" << num_iter << " Pick point: " << box_x << ", " << box_y
@@ -471,7 +480,9 @@ int main(int argc, char** argv)
           // Save results to file
           ofs << ind << ',' << num_iter << ',' << box_x << ',' << box_y << ',' << place_point << ',' << steps_per_phase
               << ',' << solver << ',' << pick_time << ',' << place_time << ',' << pick_collision << ','
-              << place_collision << '\n'
+              << place_collision << ',' << planning_response.status_description << ','
+              << planning_response_place.status_description << ',' << planning_response.status_code << ','
+              << planning_response_place.status_code << '\n'
               << std::flush;
 
         }  // place_point
