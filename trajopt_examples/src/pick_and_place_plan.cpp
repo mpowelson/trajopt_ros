@@ -46,15 +46,15 @@ int main(int argc, char** argv)
   nh.getParam("box_parent_link", box_parent_link);
 
   // Define Benchmark parameters
-  std::vector<int> num_steps{ 10, 20, 40, 80 };
+  std::vector<int> num_steps{ 10, 15, 20, 30, 40, 80 };
   std::vector<double> pick_points_x{ -0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15 };
-  std::vector<double> pick_points_y{ 0.35, 0.40, 0.45, 0.50, 0.55 };
-  std::vector<double> place_points{ -0.148856,  /*-0.11577689,*/ -0.08269778, /* -0.04961867,*/ -0.01653956,
-                                    0.01653956, /*0.04961867,*/ 0.08269778,   /*0.11577689,*/ 0.148856 };
+  std::vector<double> pick_points_y{  0.45, 0.50};
+//  std::vector<double> place_points{ -0.148856,  /*-0.11577689,*/ -0.08269778, /* -0.04961867,*/ -0.01653956,
+//                                    0.01653956, /*0.04961867,*/ 0.08269778,   /*0.11577689,*/ 0.148856 };
 
-  unsigned long num_iter = pick_points_x.size() * pick_points_y.size() * place_points.size() * num_steps.size();
+  unsigned long num_iter = pick_points_x.size() * pick_points_y.size() /** place_points.size()*/ * num_steps.size();
   sco::ModelType solver = sco::ModelType::QPOASES;
-  std::cout << "Processing " << num_iter << " iterations";
+  std::cout << "Processing " << num_iter << " iterations \n";
 
   std::ofstream ofs;
   std::string path = ros::package::getPath("trajopt_examples") + "/output.csv";
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
       << "Total Iterations,"
       << "Pick point x,"
       << "Pick point y,"
-      << "Place point,"
+//      << "Place point,"
       << "steps_per_phase,"
       << "solver,"
       << "pick_time,"
@@ -88,8 +88,8 @@ int main(int argc, char** argv)
     {
       for (double box_y : pick_points_y)
       {
-        for (double place_point : place_points)
-        {
+//        for (double place_point : place_points)
+//        {
           ind += 1;
           steps_per_phase = num_step;
 
@@ -104,8 +104,8 @@ int main(int argc, char** argv)
           bool success = env->init(urdf_model, srdf_model);
           assert(success);
 
-          //          ROS_ERROR("Press enter to continue");
-          //          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//                    ROS_ERROR("Press enter to continue");
+//                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Set the initial state of the robot
           std::unordered_map<std::string, double> joint_states;
@@ -279,6 +279,8 @@ int main(int argc, char** argv)
           planner.solve(planning_response, config);
           pick_time = (ros::Time::now() - tStart1).toSec();
 
+              plotter.plotTrajectory(env->getJointNames(), planning_response.trajectory.leftCols(env->getJointNames().size()));
+
           if (true)
           {
             // Check and report collisions
@@ -297,8 +299,8 @@ int main(int argc, char** argv)
           /// PLACE ///
           /////////////
 
-          //          ROS_ERROR("Press enter to continue");
-          //          std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+//                    ROS_ERROR("Press enter to continue");
+//                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
           // Detach the simulated box from the world and attach to the end effector
           env->detachBody("box");
@@ -318,20 +320,21 @@ int main(int argc, char** argv)
 
           // Define some place locations.
           Eigen::Isometry3d middle_right_shelf, middle_left_shelf, middle_shelf;
-          middle_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
-          middle_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 1.16);
-          middle_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
-          middle_left_shelf.translation() = Eigen::Vector3d(-0.148856, 0.73085, 1.16);
+//          middle_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//          middle_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 1.16);
+//          middle_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//          middle_left_shelf.translation() = Eigen::Vector3d(-0.148856, 0.73085, 1.16);
+//          middle_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
+//          middle_shelf.translation() = Eigen::Vector3d(place_point, 0.70085, 1.16);
 
-          middle_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
-          middle_shelf.translation() = Eigen::Vector3d(place_point, 0.70085, 1.16);
-
-          // Set the target pose to middle_left_shelf
+          // Set the target pose to middle_left_shelf - now the center of the table
+          middle_shelf.translation() = Eigen::Vector3d(0.0, 0.45, box_side + 0.77153);
+          middle_shelf.linear() = Eigen::Quaterniond(0.0, 0.0, 1.0, 0.0).matrix();
           final_pose = middle_shelf;
 
           // Setup approach for place move
           approach_pose = final_pose;
-          approach_pose.translation() += Eigen::Vector3d(0.0, -0.25, 0);
+          approach_pose.translation() += Eigen::Vector3d(0.0, 0.0, 0.15);
 
           // Create the problem construction info
           trajopt::ProblemConstructionInfo pci_place(env);
@@ -403,7 +406,43 @@ int main(int argc, char** argv)
             pci_place.cnt_infos.push_back(pose_constraint);
           }
 
-//          // Add cartesian pose cnt at the approach point
+          // Add cartesian pose cnt at the approach point
+          if (true)
+          {
+            Eigen::Quaterniond rotation(approach_pose.linear());
+            std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
+                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
+            pose_constraint->term_type = trajopt::TT_CNT;
+            pose_constraint->link = end_effector;
+            pose_constraint->timestep = 2 * steps_per_phase - 1;
+            pose_constraint->xyz = approach_pose.translation();
+
+            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
+            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase - 1);
+            pci_place.cnt_infos.push_back(pose_constraint);
+          }
+
+//           Add cartesian pose cnt at the final point
+//          int steps = 3*steps_per_phase - 2*steps_per_phase;
+//          for(int index=1; index < steps; index++)
+          {
+            Eigen::Quaterniond rotation(final_pose.linear());
+            std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
+                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
+            pose_constraint->term_type = trajopt::TT_CNT;
+            pose_constraint->link = end_effector;
+            pose_constraint->timestep = 3 * steps_per_phase - 1;
+            pose_constraint->xyz = final_pose.translation();
+//            pose_constraint->xyz.y() = approach_pose.translation().y() + 0.25/steps*index;
+
+            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
+            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
+            pose_constraint->name = "pose_" + std::to_string(3 * steps_per_phase - 1);
+            pci_place.cnt_infos.push_back(pose_constraint);
+          }
 //          if (true)
 //          {
 //            Eigen::Quaterniond rotation(approach_pose.linear());
@@ -411,35 +450,15 @@ int main(int argc, char** argv)
 //                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
 //            pose_constraint->term_type = trajopt::TT_CNT;
 //            pose_constraint->link = end_effector;
-//            pose_constraint->timestep = 2 * steps_per_phase - 1;
-//            pose_constraint->xyz = approach_pose.translation();
+//            pose_constraint->timestep = 3 * steps_per_phase - 1;
+//            pose_constraint->xyz = approach_pose.translation() -= Eigen::Vector3d(0.0, 0.0, 0.15) ;
 
 //            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
 //            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
 //            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-//            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase - 1);
+//            pose_constraint->name = "pose_" + std::to_string(3 * steps_per_phase - 1);
 //            pci_place.cnt_infos.push_back(pose_constraint);
 //          }
-
-          // Add cartesian pose cnt at the final point
-          int steps = 3*steps_per_phase - 2*steps_per_phase;
-          for(int index=1; index < steps; index++)
-          {
-            Eigen::Quaterniond rotation(final_pose.linear());
-            std::shared_ptr<trajopt::CartPoseTermInfo> pose_constraint =
-                std::shared_ptr<trajopt::CartPoseTermInfo>(new trajopt::CartPoseTermInfo);
-            pose_constraint->term_type = trajopt::TT_CNT;
-            pose_constraint->link = end_effector;
-            pose_constraint->timestep = 2 * steps_per_phase + index;
-            pose_constraint->xyz = approach_pose.translation();
-            pose_constraint->xyz.y() = approach_pose.translation().y() + 0.25/steps*index;
-
-            pose_constraint->wxyz = Eigen::Vector4d(rotation.w(), rotation.x(), rotation.y(), rotation.z());
-            pose_constraint->pos_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->rot_coeffs = Eigen::Vector3d(10.0, 10.0, 10.0);
-            pose_constraint->name = "pose_" + std::to_string(2 * steps_per_phase + index);
-            pci_place.cnt_infos.push_back(pose_constraint);
-          }
 
           // Create the place problem
           trajopt::TrajOptProbPtr place_prob = ConstructProblem(pci_place);
@@ -452,6 +471,8 @@ int main(int argc, char** argv)
           ros::Time tStart2 = ros::Time::now();
           planner.solve(planning_response_place, config_place);
           place_time = (ros::Time::now() - tStart2).toSec();
+
+           plotter.plotTrajectory(env->getJointNames(), planning_response_place.trajectory.leftCols(env->getJointNames().size()));
 
 
           if (true)
@@ -475,17 +496,17 @@ int main(int argc, char** argv)
 
           // Print results to terminal
           std::cout << "Iter: " << ind << "/" << num_iter << " Pick point: " << box_x << ", " << box_y
-                    << "  Place point: " << place_point << " steps_per_phase: " << steps_per_phase << '\n';
+                    /*<< "  Place point: " << place_point */<< " steps_per_phase: " << steps_per_phase << '\n';
 
           // Save results to file
-          ofs << ind << ',' << num_iter << ',' << box_x << ',' << box_y << ',' << place_point << ',' << steps_per_phase
+          ofs << ind << ',' << num_iter << ',' << box_x << ',' << box_y << /*',' << place_point <<*/ ',' << steps_per_phase
               << ',' << solver << ',' << pick_time << ',' << place_time << ',' << pick_collision << ','
               << place_collision << ',' << planning_response.status_description << ','
               << planning_response_place.status_description << ',' << planning_response.status_code << ','
               << planning_response_place.status_code << '\n'
               << std::flush;
 
-        }  // place_point
+//        }  // place_point
       }    // pick point
     }      // pick point
   }        // num_steps
