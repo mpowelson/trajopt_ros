@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 //                                    0.01653956, /*0.04961867,*/ 0.08269778,   /*0.11577689,*/ 0.148856 };
 
   unsigned long num_iter = pick_points_x.size() * pick_points_y.size() /** place_points.size()*/ * num_steps.size();
-  sco::ModelType solver = sco::ModelType::QPOASES;
+  sco::ModelType solver = sco::ModelType::OSQP;
   std::cout << "Processing " << num_iter << " iterations \n";
 
   std::ofstream ofs;
@@ -119,6 +119,7 @@ int main(int argc, char** argv)
           env->setState(joint_states);
 
           // Attach the simulated box
+
           tesseract::AttachableObjectPtr obj(new tesseract::AttachableObject());
           std::shared_ptr<shapes::Box> box(new shapes::Box());
           Eigen::Isometry3d box_pose = Eigen::Isometry3d::Identity();
@@ -145,6 +146,38 @@ int main(int argc, char** argv)
           attached_body.transform = object_pose;
 
           env->attachBody(attached_body);
+
+          /////////////////////
+          {
+              // Attach the simulated box
+              tesseract::AttachableObjectPtr obj2(new tesseract::AttachableObject());
+              std::shared_ptr<shapes::Box> box2(new shapes::Box());
+              Eigen::Isometry3d box_pose2 = Eigen::Isometry3d::Identity();
+
+              box2->size[0] = 0.01;
+              box2->size[1] = 1.0;
+              box2->size[2] = 0.3;
+
+              obj2->name = "wall";
+              obj2->visual.shapes.push_back(box2);
+              obj2->visual.shape_poses.push_back(box_pose2);
+              obj2->collision.shapes.push_back(box2);
+              obj2->collision.shape_poses.push_back(box_pose2);
+              obj2->collision.collision_object_types.push_back(tesseract::CollisionObjectType::UseShapeType);
+
+              env->addAttachableObject(obj2);
+
+              // Move box to correct location
+              tesseract::AttachedBodyInfo attached_body2;
+              Eigen::Isometry3d object_pose2 = Eigen::Isometry3d::Identity();
+              object_pose2.translation() += Eigen::Vector3d(0.30, 0.25, box2->size[2] / 2.0);
+              attached_body2.object_name = "wall";
+              attached_body2.parent_link_name = box_parent_link;
+              attached_body2.transform = object_pose2;
+
+              env->attachBody(attached_body2);
+          }
+          /////////////////////
 
           // Send the initial trajectory for plotting
           tesseract::tesseract_ros::ROSBasicPlotting plotter(env);
@@ -292,8 +325,8 @@ int main(int argc, char** argv)
             pick_collision = tesseract::continuousCollisionCheckTrajectory(
                 *manager, *config.prob->GetEnv(), *config.prob->GetKin(), planning_response.trajectory, collisions);
           }
-          //          plotter.plotTrajectory(env->getJointNames(),
-          //                                 planning_response.trajectory.leftCols(env->getJointNames().size()));
+//                    plotter.plotTrajectory(env->getJointNames(),
+//                                           planning_response.trajectory.leftCols(env->getJointNames().size()));
 
           /////////////
           /// PLACE ///
@@ -328,7 +361,7 @@ int main(int argc, char** argv)
 //          middle_shelf.translation() = Eigen::Vector3d(place_point, 0.70085, 1.16);
 
           // Set the target pose to middle_left_shelf - now the center of the table
-          middle_shelf.translation() = Eigen::Vector3d(0.0, 0.45, box_side + 0.77153);
+          middle_shelf.translation() = Eigen::Vector3d(0.55, 0.0, box_side + 0.77153);
           middle_shelf.linear() = Eigen::Quaterniond(0.0, 0.0, 1.0, 0.0).matrix();
           final_pose = middle_shelf;
 
