@@ -52,6 +52,9 @@ target_link_libraries(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan ${catkin_
 add_executable(${PROJECT_NAME}_pick_and_place_plan src/pick_and_place_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_pick_and_place_plan ${catkin_LIBRARIES})
 
+add_executable(${PROJECT_NAME}_costs_comparison src/costs_comparison.cpp)
+target_link_libraries(${PROJECT_NAME}_costs_comparison ${catkin_LIBRARIES})
+
 # Mark executables and/or libraries for installation
 install(
   TARGETS ${PROJECT_NAME}_basic_cartesian_plan ${PROJECT_NAME}_glass_up_right_plan ${PROJECT_NAME}_puzzle_piece_plan ${PROJECT_NAME}_car_seat_demo ${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan
