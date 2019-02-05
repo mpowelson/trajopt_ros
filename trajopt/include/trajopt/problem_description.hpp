@@ -273,6 +273,7 @@ struct CartVelTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(CartVelTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   CartVelTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
@@ -306,6 +307,7 @@ struct JointPosTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointPosTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointPosTermInfo() : TermInfo(TT_COST | TT_CNT | TT_USE_TIME) {}
 };
 
@@ -355,7 +357,8 @@ struct JointVelTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointVelTermInfo)
 
-  JointVelTermInfo() : TermInfo(TT_COST | TT_CNT) {}
+  /** @brief Initialize term with it's supported types */
+  JointVelTermInfo() : TermInfo(TT_COST | TT_CNT | TT_USE_TIME) {}
 };
 
 /**
@@ -399,6 +402,7 @@ struct JointAccTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointAccTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointAccTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
@@ -443,6 +447,7 @@ struct JointJerkTermInfo : public TermInfo
   void hatch(TrajOptProb& prob) override;
   DEFINE_CREATE(JointJerkTermInfo)
 
+  /** @brief Initialize term with it's supported types */
   JointJerkTermInfo() : TermInfo(TT_COST | TT_CNT) {}
 };
 
@@ -481,6 +486,23 @@ struct CollisionTermInfo : public TermInfo
   DEFINE_CREATE(CollisionTermInfo)
 
   CollisionTermInfo() : TermInfo(TT_COST | TT_CNT) {}
+};
+
+/**
+ * @brief Applies a penalty to the total time taken by the trajectory
+ */
+struct TotalTimeTermInfo : public TermInfo
+{
+  /** @brief Scales this term. */
+  double coeff = 1.0;
+  /** @brief If non zero, penalty type will be a hinge on values greater than this limit relative to the target. */
+  double limit = 0.0;
+
+  void hatch(TrajOptProb& prob);
+  void fromJson(ProblemConstructionInfo& pci, const Json::Value& v);
+  DEFINE_CREATE(TotalTimeTermInfo)
+
+  TotalTimeTermInfo() : TermInfo(TT_COST | TT_CNT | TT_USE_TIME) {}
 };
 
 }  // namespace trajopt
