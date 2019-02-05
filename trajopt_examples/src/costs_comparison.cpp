@@ -40,7 +40,25 @@ using namespace trajopt;
 class CostsComparisonUtils
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   ros::NodeHandle nh_;
+
+  CostsComparisonUtils()
+  {
+    // Create all the inputs upfront
+    num_rows = 10;
+    num_cols = 7;
+    coeffs = Eigen::VectorXd::Random(num_cols);
+    targets = Eigen::VectorXd::Random(num_cols);
+    upper_limits = Eigen::VectorXd::Random(num_cols);
+    lower_limis = upper_limits / 2.;
+    first_step = 0;
+    last_step = (num_rows)-1;
+    dblvec = createRandomDblVec(num_rows * num_cols);
+    model = std::make_shared<sco::BPMPDModel>();
+    traj = createVarArray(model, num_rows, num_cols);
+  }
 
   /**
    * @brief Creates a DblVec full of random numbers
@@ -84,6 +102,19 @@ public:
     }
     return output;
   }
+
+  // Create all the inputs upfront
+  int num_rows;
+  int num_cols;
+  Eigen::VectorXd coeffs;
+  Eigen::VectorXd targets;
+  Eigen::VectorXd upper_limits;
+  Eigen::VectorXd lower_limis;
+  int first_step;
+  int last_step;
+  trajopt::DblVec dblvec;
+  std::shared_ptr<sco::BPMPDModel> model;
+  trajopt::VarArray traj;
 };
 
 //////
@@ -96,43 +127,155 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "trajopt_costs_comparison_unit");
   ros::NodeHandle pnh("~");
 
-  CostsComparisonUtils util;
+  //---------------------------------------------
+  //----------- Initialize ----------------------
+  //---------------------------------------------
+  std::ofstream ofs;
+  std::string path = ros::package::getPath("trajopt_examples") + "/cost_comparison_output.csv";
+  ofs.open(path, std::ofstream::out | std::ofstream::trunc);
+  ofs << "Cost/Cnt,"
+      << "Construction Time,"
+      << "Value Time,"
+      << "Convex Time";
 
-  // Create all the inputs upfront
-  int num_rows = 10;
-  int num_cols = 10;
-  Eigen::VectorXd coeffs = Eigen::VectorXd::Random(num_cols);
-  Eigen::VectorXd targets = Eigen::VectorXd::Random(num_cols);
-  Eigen::VectorXd upper_limits = Eigen::VectorXd::Random(num_cols);
-  Eigen::VectorXd lower_limis = upper_limits / 2.;
-  int first_step = 0;
-  int last_step = (num_rows)-1;
-  trajopt::DblVec dblvec = util.createRandomDblVec(num_rows * num_cols);
-  std::shared_ptr<sco::BPMPDModel> model = std::make_shared<sco::BPMPDModel>();
-  trajopt::VarArray traj = util.createVarArray(model, num_rows, num_cols);
+  //---------------------------------------------
+  //----------- JointPosEqCost  -----------------
+  //---------------------------------------------
+  for (int ind = 0; ind < 100; ind++)
+  {
+    // Create cost comparison utility that contains all of the parameters
+    CostsComparisonUtils util;
 
-  // Define outputs
-  double construct_time, value_time, convex_time;
+    // Define outputs
+    double construct_time, value_time, convex_time;
+    ros::Time tStart;
 
-  ros::Time tStart;
-  // Time construction
-  tStart = ros::Time::now();
-  JointPosEqCost object(traj, coeffs, targets, first_step, last_step);
-  construct_time = (ros::Time::now() - tStart).toSec();
+    // Time construction
+    tStart = ros::Time::now();
+    JointPosEqCost object(util.traj, util.coeffs, util.targets, util.first_step, util.last_step);
+    construct_time = (ros::Time::now() - tStart).toSec();
 
-  // Time the evaluation
-  tStart = ros::Time::now();
-  auto tmp = dblvec;
-  object.value(dblvec);
-  value_time = (ros::Time::now() - tStart).toSec();
+    // Time the evaluation
+    tStart = ros::Time::now();
+    object.value(util.dblvec);
+    value_time = (ros::Time::now() - tStart).toSec();
 
-  // Time convex fnc
-  tStart = ros::Time::now();
-  object.convex(dblvec, model.get());
-  convex_time = (ros::Time::now() - tStart).toSec();
+    // Time convex fnc
+    tStart = ros::Time::now();
+    object.convex(util.dblvec, util.model.get());
+    convex_time = (ros::Time::now() - tStart).toSec();
 
-  std::cout << "construct_time: " << construct_time << "    value_time: " << value_time
-            << "    convex time: " << convex_time << "\n\n\n\n\n\n\n\n";
+    // Display to terminal and print to file
+    std::string cost_name = "JointPosEqCost";
+    std::cout << cost_name << "   construct_time: " << construct_time << "    value_time: " << value_time
+              << "    convex time: " << convex_time << "\n";
+    ofs << cost_name << "," << construct_time << "," << value_time  << "," << convex_time << "\n" << std::flush;
+  }
+  //---------------------------------------------
+  //----------- JointVelEqCost ------------------
+  //---------------------------------------------
+  for (int ind = 0; ind < 100; ind++)
+  {
+    // Create cost comparison utility that contains all of the parameters
+    CostsComparisonUtils util;
+
+    // Define outputs
+    double construct_time, value_time, convex_time;
+    ros::Time tStart;
+
+    // Time construction
+    tStart = ros::Time::now();
+    JointVelEqCost object(util.traj, util.coeffs, util.targets, util.first_step, util.last_step);
+    construct_time = (ros::Time::now() - tStart).toSec();
+
+    // Time the evaluation
+    tStart = ros::Time::now();
+    object.value(util.dblvec);
+    value_time = (ros::Time::now() - tStart).toSec();
+
+    // Time convex fnc
+    tStart = ros::Time::now();
+    object.convex(util.dblvec, util.model.get());
+    convex_time = (ros::Time::now() - tStart).toSec();
+
+    // Display to terminal and print to file
+    std::string cost_name = "JointVelEqCost";
+    std::cout << cost_name << "   construct_time: " << construct_time << "    value_time: " << value_time
+              << "    convex time: " << convex_time << "\n";
+    ofs << cost_name << "," << construct_time << "," << value_time  << "," << convex_time << "\n" << std::flush;
+  }
+  //---------------------------------------------
+  //-----------  JointAccEqCost  ----------------
+  //---------------------------------------------
+  for (int ind = 0; ind < 100; ind++)
+  {
+    // Create cost comparison utility that contains all of the parameters
+    CostsComparisonUtils util;
+
+    // Define outputs
+    double construct_time, value_time, convex_time;
+    ros::Time tStart;
+
+    // Time construction
+    tStart = ros::Time::now();
+    JointAccEqCost object(util.traj, util.coeffs, util.targets, util.first_step, util.last_step);
+    construct_time = (ros::Time::now() - tStart).toSec();
+
+    // Time the evaluation
+    tStart = ros::Time::now();
+    object.value(util.dblvec);
+    value_time = (ros::Time::now() - tStart).toSec();
+
+    // Time convex fnc
+    tStart = ros::Time::now();
+    object.convex(util.dblvec, util.model.get());
+    convex_time = (ros::Time::now() - tStart).toSec();
+
+    // Display to terminal and print to file
+    std::string cost_name = "JointAccEqCost";
+    std::cout << cost_name << "   construct_time: " << construct_time << "    value_time: " << value_time
+              << "    convex time: " << convex_time << "\n";
+    ofs << cost_name << "," << construct_time << "," << value_time  << "," << convex_time << "\n" << std::flush;
+  }
+  //---------------------------------------------
+  //-----------  JointJerkEqCost ----------------
+  //---------------------------------------------
+  for (int ind = 0; ind < 100; ind++)
+  {
+    // Create cost comparison utility that contains all of the parameters
+    CostsComparisonUtils util;
+
+    // Define outputs
+    double construct_time, value_time, convex_time;
+    ros::Time tStart;
+
+    // Time construction
+    tStart = ros::Time::now();
+    JointJerkEqCost object(util.traj, util.coeffs, util.targets, util.first_step, util.last_step);
+    construct_time = (ros::Time::now() - tStart).toSec();
+
+    // Time the evaluation
+    tStart = ros::Time::now();
+    object.value(util.dblvec);
+    value_time = (ros::Time::now() - tStart).toSec();
+
+    // Time convex fnc
+    tStart = ros::Time::now();
+    object.convex(util.dblvec, util.model.get());
+    convex_time = (ros::Time::now() - tStart).toSec();
+
+    // Display to terminal and print to file
+    std::string cost_name = "JointJerkEqCost";
+    std::cout << cost_name << "   construct_time: " << construct_time << "    value_time: " << value_time
+              << "    convex time: " << convex_time << "\n";
+    ofs << cost_name << "," << construct_time << "," << value_time  << "," << convex_time << "\n" << std::flush;
+  }
+
+
+  //---------------------------------------------
+  //----------- Close  ----------------------
+  //---------------------------------------------
+  ofs.close();
 
   return 0;
 }
