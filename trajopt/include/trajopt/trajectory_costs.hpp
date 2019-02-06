@@ -93,9 +93,9 @@ public:
   DblVec value(const DblVec&) override;
   /** Calculate constraint violations (positive part for inequality constraint,
    * absolute value for inequality constraint)*/
-  DblVec violations(const DblVec& x);
+//  DblVec violations(const DblVec& x);
   /** Sum of violations */
-  double violation(const DblVec& x);
+//  double violation(const DblVec& x);
   sco::VarVector getVars() override { return vars_.flatten(); }
 private:
   /** @brief The variables being optimized. Used to properly index the vector being optimized */
@@ -226,9 +226,9 @@ public:
   DblVec value(const DblVec&) override;
   /** Calculate constraint violations (positive part for inequality constraint,
    * absolute value for inequality constraint)*/
-  DblVec violations(const DblVec& x);
+//  DblVec violations(const DblVec& x);
   /** Sum of violations */
-  double violation(const DblVec& x);
+//  double violation(const DblVec& x);
   sco::VarVector getVars() override { return vars_.flatten(); }
 private:
   /** @brief The variables being optimized. Used to properly index the vector being optimized */
@@ -359,9 +359,9 @@ public:
   DblVec value(const DblVec&) override;
   /** Calculate constraint violations (positive part for inequality constraint,
    * absolute value for inequality constraint)*/
-  DblVec violations(const DblVec& x);
+//  DblVec violations(const DblVec& x);
   /** Sum of violations */
-  double violation(const DblVec& x);
+//  double violation(const DblVec& x);
   sco::VarVector getVars() override { return vars_.flatten(); }
 private:
   /** @brief The variables being optimized. Used to properly index the vector being optimized */
@@ -492,9 +492,9 @@ public:
   DblVec value(const DblVec&) override;
   /** Calculate constraint violations (positive part for inequality constraint,
    * absolute value for inequality constraint)*/
-  DblVec violations(const DblVec& x);
+//  DblVec violations(const DblVec& x);
   /** Sum of violations */
-  double violation(const DblVec& x);
+//  double violation(const DblVec& x);
   sco::VarVector getVars() override { return vars_.flatten(); }
 private:
   /** @brief The variables being optimized. Used to properly index the vector being optimized */
