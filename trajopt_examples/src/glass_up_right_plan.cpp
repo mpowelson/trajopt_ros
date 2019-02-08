@@ -39,6 +39,7 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <trajopt/problem_description.hpp>
 #include <trajopt_utils/config.hpp>
 #include <trajopt_utils/logging.hpp>
+#include <gtest/gtest.h>
 
 using namespace trajopt;
 using namespace tesseract;
@@ -154,9 +155,8 @@ TrajOptProbPtr cppMethod()
   return ConstructProblem(pci);
 }
 
-int main(int argc, char** argv)
+TEST(TrajOptExamples, GlassUprightPlan)
 {
-  ros::init(argc, argv, "glass_up_right_plan");
   ros::NodeHandle pnh("~");
   ros::NodeHandle nh;
 
@@ -294,4 +294,15 @@ int main(int argc, char** argv)
       *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions);
 
   ROS_INFO((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
+}
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "glass_up_right_plan");
+
+  // Here we are running all of the code inside of a gtest. This is done so that we can automatically check that the
+  // example has not been broken during development. This is not TrajOpt specific, and all of the code in the test (with
+  // the exception of the gtest checks "EXPECT_x", etc) could be copied into main.
+  testing::InitGoogleTest(&argc, argv);
+  RUN_ALL_TESTS();
 }

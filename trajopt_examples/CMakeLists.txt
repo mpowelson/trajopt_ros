@@ -3,6 +3,8 @@ project(trajopt_examples)
 
 add_compile_options(-std=c++11 -Wall -Wextra)
 
+find_package(rostest REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   roslib
@@ -11,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   tesseract_planning
   octomap_ros
   pcl_conversions
+  rostest
 )
 
 find_package(PCL REQUIRED COMPONENTS core features filters io segmentation surface)
@@ -27,19 +30,19 @@ add_executable(${PROJECT_NAME}_basic_cartesian_plan src/basic_cartesian_plan.cpp
 target_link_libraries(${PROJECT_NAME}_basic_cartesian_plan ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_basic_cartesian_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
-add_executable(${PROJECT_NAME}_glass_up_right_plan src/glass_up_right_plan.cpp)
+add_rostest_gtest(${PROJECT_NAME}_glass_up_right_plan test/glass_up_right_plan.test src/glass_up_right_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_glass_up_right_plan ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_glass_up_right_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
-add_executable(${PROJECT_NAME}_puzzle_piece_plan src/puzzle_piece_plan.cpp)
+add_rostest_gtest(${PROJECT_NAME}_puzzle_piece_plan test/puzzle_piece_plan.test src/puzzle_piece_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_puzzle_piece_plan ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_puzzle_piece_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
-add_executable(${PROJECT_NAME}_car_seat_demo src/car_seat_demo.cpp)
+add_rostest_gtest(${PROJECT_NAME}_car_seat_demo test/car_seat_demo.test src/car_seat_demo.cpp)
 target_link_libraries(${PROJECT_NAME}_car_seat_demo ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_car_seat_demo PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
-add_executable(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan src/puzzle_piece_auxillary_axes_plan.cpp)
+add_rostest_gtest(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan test/puzzle_piece_auxillary_axes_plan.test src/puzzle_piece_auxillary_axes_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 

@@ -38,6 +38,7 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <trajopt/problem_description.hpp>
 #include <trajopt_utils/config.hpp>
 #include <trajopt_utils/logging.hpp>
+#include <gtest/gtest.h>
 
 using namespace trajopt;
 using namespace tesseract;
@@ -63,8 +64,8 @@ void addSeats()
     AttachableObjectPtr obj(new AttachableObject());
 
     obj->name = "seat_" + std::to_string(i + 1);
-    std::shared_ptr<shapes::Mesh> visual_mesh(
-        shapes::createMeshFromResource("package://trajopt_examples/meshes/car_seat/visual/seat.dae"));
+    std::shared_ptr<shapes::Mesh> visual_mesh(shapes::createMeshFromResource("package://trajopt_examples/meshes/"
+                                                                             "car_seat/visual/seat.dae"));
     Eigen::Isometry3d seat_pose;
     seat_pose.setIdentity();
 
@@ -73,8 +74,9 @@ void addSeats()
 
     for (auto i = 1; i <= 10; ++i)
     {
-      std::shared_ptr<shapes::Mesh> collision_mesh(shapes::createMeshFromResource(
-          "package://trajopt_examples/meshes/car_seat/collision/seat_" + std::to_string(i) + ".stl"));
+      std::shared_ptr<shapes::Mesh> collision_mesh(shapes::createMeshFromResource("package://trajopt_examples/meshes/"
+                                                                                  "car_seat/collision/seat_" +
+                                                                                  std::to_string(i) + ".stl"));
 
       obj->collision.shapes.push_back(collision_mesh);
       obj->collision.shape_poses.push_back(seat_pose);
@@ -295,9 +297,8 @@ std::shared_ptr<ProblemConstructionInfo> cppMethod(const std::string& start, con
   return pci;
 }
 
-int main(int argc, char** argv)
+TEST(TrajOptExamples, CarSeatDemo)
 {
-  ros::init(argc, argv, "car_seat_demo");
   ros::NodeHandle pnh("~");
   ros::NodeHandle nh;
 
@@ -413,6 +414,18 @@ int main(int argc, char** argv)
 
   ROS_INFO((found) ? ("Place seat #1 trajectory is in collision") : ("Place seat #1 trajectory is collision free"));
 }
+
+int main(int argc, char** argv)
+{
+  ros::init(argc, argv, "car_seat_demo");
+
+  // Here we are running all of the code inside of a gtest. This is done so that we can automatically check that the
+  // example has not been broken during development. This is not TrajOpt specific, and all of the code in the test (with
+  // the exception of the gtest checks "EXPECT_x", etc) could be copied into main.
+  testing::InitGoogleTest(&argc, argv);
+  RUN_ALL_TESTS();
+}
+
 // int main(int argc, char **argv)
 //{
 //  // Set up ROS.
