@@ -53,11 +53,10 @@ static bool plotting_ = false;
 static std::string method_ = "json";
 static urdf::ModelInterfaceSharedPtr urdf_model_; /**< URDF Model */
 static srdf::ModelSharedPtr srdf_model_;          /**< SRDF Model */
-static tesseract_ros::KDLEnvPtr env_;             /**< Trajopt Basic Environment */
 
 std::unordered_map<std::string, std::unordered_map<std::string, double>> saved_positions_;
 
-void addSeats()
+void addSeats(const tesseract_ros::KDLEnvPtr& env_)
 {
   for (int i = 0; i < 3; ++i)
   {
@@ -220,7 +219,7 @@ Eigen::VectorXd getPositionVectorXd(const BasicKinConstPtr& kin, const std::unor
   return result;
 }
 
-std::shared_ptr<ProblemConstructionInfo> cppMethod(const std::string& start, const std::string& finish)
+std::shared_ptr<ProblemConstructionInfo> cppMethod(const tesseract_ros::KDLEnvPtr& env_, const std::string& start, const std::string& finish)
 {
   std::shared_ptr<ProblemConstructionInfo> pci(new ProblemConstructionInfo(env_));
 
@@ -310,7 +309,7 @@ TEST(TrajOptExamples, CarSeatDemo)
 
   srdf_model_ = srdf::ModelSharedPtr(new srdf::Model);
   srdf_model_->initString(*urdf_model_, srdf_xml_string);
-  env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
+  tesseract_ros::KDLEnvPtr env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
   assert(urdf_model_ != nullptr);
   assert(env_ != nullptr);
 
@@ -330,7 +329,7 @@ TEST(TrajOptExamples, CarSeatDemo)
   //  addCar();
 
   // Put three seats on the conveyor
-  addSeats();
+  addSeats(env_);
 
   // Move to home position
   env_->setState(saved_positions_["Home"]);
@@ -350,7 +349,7 @@ TEST(TrajOptExamples, CarSeatDemo)
   std::shared_ptr<ProblemConstructionInfo> pci;
   TrajOptProbPtr prob;
 
-  pci = cppMethod("Home", "Pick1");
+  pci = cppMethod(env_, "Home", "Pick1");
   prob = ConstructProblem(*pci);
   sco::BasicTrustRegionSQP pick1_opt(prob);
   if (plotting_)
@@ -391,7 +390,7 @@ TEST(TrajOptExamples, CarSeatDemo)
   env_->detachBody(attach_seat1.object_name);
   env_->attachBody(attach_seat1);
 
-  pci = cppMethod("Pick1", "Place1");
+  pci = cppMethod(env_, "Pick1", "Place1");
   prob = ConstructProblem(*pci);
   sco::BasicTrustRegionSQP place1_opt(prob);
   if (plotting_)

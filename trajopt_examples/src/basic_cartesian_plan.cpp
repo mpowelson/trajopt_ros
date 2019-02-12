@@ -60,9 +60,8 @@ static int steps_ = 5;
 static std::string method_ = "json";
 static urdf::ModelInterfaceSharedPtr urdf_model_; /**< URDF Model */
 static srdf::ModelSharedPtr srdf_model_;          /**< SRDF Model */
-static tesseract_ros::KDLEnvPtr env_;             /**< Trajopt Basic Environment */
 
-TrajOptProbPtr jsonMethod()
+TrajOptProbPtr jsonMethod(const tesseract_ros::KDLEnvPtr& env_)
 {
   ros::NodeHandle nh;
   std::string trajopt_config;
@@ -80,7 +79,7 @@ TrajOptProbPtr jsonMethod()
   return ConstructProblem(root, env_);
 }
 
-TrajOptProbPtr cppMethod()
+TrajOptProbPtr cppMethod(const tesseract_ros::KDLEnvPtr& env_)
 {
   ProblemConstructionInfo pci(env_);
 
@@ -151,7 +150,7 @@ TEST(TrajOptExamples, BasicCartesianPlan)
 
   srdf_model_ = srdf::ModelSharedPtr(new srdf::Model);
   srdf_model_->initString(*urdf_model_, srdf_xml_string);
-  env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
+  tesseract_ros::KDLEnvPtr env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
   assert(urdf_model_ != nullptr);
   assert(env_ != nullptr);
 
@@ -224,9 +223,9 @@ TEST(TrajOptExamples, BasicCartesianPlan)
   // Setup Problem
   TrajOptProbPtr prob;
   if (method_ == "cpp")
-    prob = cppMethod();
+    prob = cppMethod(env_);
   else
-    prob = jsonMethod();
+    prob = jsonMethod(env_);
 
   // Solve Trajectory
   ROS_INFO("basic cartesian plan example");

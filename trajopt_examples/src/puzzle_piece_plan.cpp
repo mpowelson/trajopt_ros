@@ -50,7 +50,6 @@ const std::string ROBOT_SEMANTIC_PARAM = "robot_description_semantic"; /**< Defa
 static bool plotting_ = false;
 static urdf::ModelInterfaceSharedPtr urdf_model_; /**< URDF Model */
 static srdf::ModelSharedPtr srdf_model_;          /**< SRDF Model */
-static tesseract_ros::KDLEnvPtr env_;             /**< Trajopt Basic Environment */
 
 static VectorIsometry3d makePuzzleToolPoses()
 {
@@ -112,7 +111,7 @@ static VectorIsometry3d makePuzzleToolPoses()
   return path;
 }
 
-ProblemConstructionInfo cppMethod()
+ProblemConstructionInfo cppMethod(const tesseract_ros::KDLEnvPtr& env_)
 {
   ProblemConstructionInfo pci(env_);
 
@@ -216,7 +215,7 @@ TEST(TrajOptExamples, PuzzlePiecePlan)
   urdf_model_ = urdf::parseURDF(urdf_xml_string);
   srdf_model_ = srdf::ModelSharedPtr(new srdf::Model);
   srdf_model_->initString(*urdf_model_, srdf_xml_string);
-  env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
+  tesseract_ros::KDLEnvPtr env_ = tesseract_ros::KDLEnvPtr(new tesseract_ros::KDLEnv);
   assert(urdf_model_ != nullptr);
   assert(env_ != nullptr);
 
@@ -248,7 +247,7 @@ TEST(TrajOptExamples, PuzzlePiecePlan)
   util::gLogLevel = util::LevelInfo;
 
   // Setup Problem
-  ProblemConstructionInfo pci = cppMethod();
+  ProblemConstructionInfo pci = cppMethod(env_);
   TrajOptProbPtr prob = ConstructProblem(pci);
 
   // Solve Trajectory
