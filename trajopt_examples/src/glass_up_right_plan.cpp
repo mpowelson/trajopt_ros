@@ -53,7 +53,6 @@ const std::string TRAJOPT_DESCRIPTION_PARAM =
 static bool plotting_ = false;
 static bool write_to_file_ = false;
 static int steps_ = 5;
-static std::string method_ = "json";
 static urdf::ModelInterfaceSharedPtr urdf_model_; /**< URDF Model */
 static srdf::ModelSharedPtr srdf_model_;          /**< SRDF Model */
 
@@ -206,9 +205,10 @@ TEST(TrajOptExamples, GlassUprightPlan)
   env_->attachBody(attached_body);
 
   // Get ROS Parameters
+  std::string init_method;
   pnh.param("plotting", plotting_, plotting_);
   pnh.param("write_to_file", write_to_file_, write_to_file_);
-  pnh.param<std::string>("method", method_, method_);
+  pnh.param<std::string>("init_method", init_method, "json");
   pnh.param<int>("steps", steps_, steps_);
 
   // Set the robot initial state
@@ -229,7 +229,7 @@ TEST(TrajOptExamples, GlassUprightPlan)
 
   // Setup Problem
   TrajOptProbPtr prob;
-  if (method_ == "cpp")
+  if (init_method == "cpp")
     prob = cppMethod(env_);
   else
     prob = jsonMethod(env_);
