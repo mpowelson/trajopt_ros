@@ -42,10 +42,19 @@ struct BasicArray
   }
   std::vector<T> rblock(int startRow, int startCol, int nCol) const
   {
-    std::vector<T> out(nCol);
+    std::vector<T> out(static_cast<size_t>(nCol));
     for (int iCol = 0; iCol < nCol; ++iCol)
     {
-      out[iCol] = at(startRow, iCol + startCol);
+      out[static_cast<size_t>(iCol)] = at(static_cast<size_t>(startRow), static_cast<size_t>(iCol + startCol));
+    }
+    return out;
+  }
+  std::vector<T> cblock(int startRow, int startCol, int nRow) const
+  {
+    std::vector<T> out(nRow);
+    for (int iRow = 0; iRow < nRow; ++iRow)
+    {
+      out[iRow] = at(iRow + startRow, startCol);
     }
     return out;
   }

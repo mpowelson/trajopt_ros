@@ -1,5 +1,5 @@
 <launch>
-    <arg name="rviz" default="false"/>
+    <arg name="rviz" default="true"/>
     <arg name="plotting" default="false" />
     <arg name="file_write_cb" default="false" />
     <arg name="box_side" default="0.2"/>
