@@ -581,6 +581,47 @@ int main(int argc, char** argv)
         << util.num_cols << "\n"
         << std::flush;
   }
+  //---------------------------------------------
+  //----------- CollisionCost  ------------------
+  //---------------------------------------------
+//  for (int ind = min_row; ind < max_row; ind++)
+//  {
+//    // Create cost comparison utility that contains all of the parameters
+//    CostsComparisonUtils util(ind, 7);
+
+//    // Define outputs
+//    double construct_time, value_time, convex_time;
+//    ros::Time tStart;
+
+//    // Time construction
+//    tStart = ros::Time::now();
+//    CollisionCost(prob.GetKin(),
+//                                                        prob.GetEnv(),
+//                                                        info[static_cast<size_t>(i - first_step)],
+//                                                        prob.GetVarRow(i, 0, n_dof),
+//                                                        prob.GetVarRow(i + gap, 0, n_dof))));
+//    CollisionCost object(
+//        util.traj, util.coeffs, util.targets, util.upper_limits, util.lower_limits, util.first_step, util.last_step);
+//    construct_time = (ros::Time::now() - tStart).toSec();
+
+//    // Time the evaluation
+//    tStart = ros::Time::now();
+//    object.value(util.dblvec);
+//    value_time = (ros::Time::now() - tStart).toSec();
+
+//    // Time convex fnc
+//    tStart = ros::Time::now();
+//    object.convex(util.dblvec, util.model.get());
+//    convex_time = (ros::Time::now() - tStart).toSec();
+
+//    // Display to terminal and print to file
+//    std::string cost_name = "JointJerkIneqCost";
+//    std::cout << cost_name << "   construct_time: " << construct_time << "    value_time: " << value_time
+//              << "    convex time: " << convex_time << "\n";
+//    ofs << cost_name << "," << construct_time << "," << value_time << "," << convex_time << "," << util.num_rows << ","
+//        << util.num_cols << "\n"
+//        << std::flush;
+//  }
 
   //---------------------------------------------
   //----------- Close  ----------------------

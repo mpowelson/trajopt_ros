@@ -26,13 +26,7 @@
     <param name="box_parent_link" value="$(arg box_parent_link)"/>
 
     <!-- Launch planner node -->
-    <node name="pick_and_place_plan_node" pkg="trajopt_examples" type="trajopt_examples_pick_and_place_plan" output="screen" launch-prefix="valgrind --tool=callgrind --callgrind-out-file='callgrind.trajopt.%p'">
-        <param name="plotting" value="$(arg plotting)"/>
-        <param name="file_write_cb" value="$(arg file_write_cb)" />
+    <node name="pick_and_place_plan_node" pkg="trajopt_examples" type="trajopt_examples_collision_comparison" output="screen" launch-prefix="valgrind --tool=callgrind --callgrind-out-file='callgrind.trajopt_collision.%p'">
     </node>
-
-    <!-- Launch visualization -->
-    <node if="$(arg rviz)" pkg="rviz" type="rviz" name="pick_and_place_viz"
-        args="-d $(find trajopt_examples)/config/pick_and_place_plan.rviz" />
 
 </launch>

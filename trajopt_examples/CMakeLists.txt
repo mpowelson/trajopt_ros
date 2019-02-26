@@ -46,14 +46,14 @@ target_compile_options(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan PRIVATE 
 add_executable(${PROJECT_NAME}_pick_and_place_plan src/pick_and_place_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_pick_and_place_plan ${catkin_LIBRARIES})
 
-add_executable(${PROJECT_NAME}_pick_and_place_plan src/pick_and_place_plan.cpp)
-target_link_libraries(${PROJECT_NAME}_pick_and_place_plan ${catkin_LIBRARIES})
-
 add_executable(${PROJECT_NAME}_costs_comparison src/costs_comparison.cpp)
 target_link_libraries(${PROJECT_NAME}_costs_comparison ${catkin_LIBRARIES})
 
 add_executable(${PROJECT_NAME}_cnts_comparison src/cnts_comparison.cpp)
 target_link_libraries(${PROJECT_NAME}_cnts_comparison ${catkin_LIBRARIES})
+
+add_executable(${PROJECT_NAME}_collision_comparison src/collision_comparison.cpp)
+target_link_libraries(${PROJECT_NAME}_collision_comparison ${catkin_LIBRARIES})
 
 # Mark executables and/or libraries for installation
 install(
