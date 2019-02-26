@@ -2,6 +2,7 @@
 #include <tesseract_ros/kdl/kdl_env.h>
 #include <tesseract_ros/ros_basic_plotting.h>
 #include <tesseract_planning/trajopt/trajopt_planner.h>
+#include <tesseract_core/continuous_contact_manager_base.h>
 
 #include <urdf_parser/urdf_parser.h>
 
@@ -288,7 +289,8 @@ int main(int argc, char** argv)
   Eigen::Isometry3d retreat_pose = approach_pose;
 
   // Define some place locations.
-  Eigen::Isometry3d bottom_right_shelf, bottom_left_shelf, middle_right_shelf, middle_left_shelf, top_right_shelf, top_left_shelf;
+  Eigen::Isometry3d bottom_right_shelf, bottom_left_shelf, middle_right_shelf, middle_left_shelf, top_right_shelf,
+      top_left_shelf;
   bottom_right_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
   bottom_right_shelf.translation() = Eigen::Vector3d(0.148856, 0.73085, 0.906);
   bottom_left_shelf.linear() = Eigen::Quaterniond(0, 0, 0.7071068, 0.7071068).matrix();
@@ -445,12 +447,51 @@ int main(int argc, char** argv)
   // Solve problem
   planner.solve(planning_response_place, config_place);
 
+  ros::Time tStart = ros::Time::now();
+  // Post process dense collisions
+  bool found;
+  // Setup contact monitor
+  std::vector<tesseract::ContactResultMap> collisions;
+  tesseract::ContinuousContactManagerBasePtr manager = config_place.prob->GetEnv()->getContinuousContactManager();
+  manager->setActiveCollisionObjects(config_place.prob->GetKin()->getLinkNames());
+  manager->setContactDistanceThreshold(0);
+
+  // Get trajectory
+
+  trajopt::TrajArray traj = planning_response_place.trajectory.leftCols(env->getJointNames().size());
+  trajopt::TrajArray expanded;
+  int num_interps = 60;
+  expanded.resize((traj.rows() - 1) * num_interps + 1, traj.cols());
+  // Loop over each row, doing joint interpolation
+  for (int row = 0; row < traj.rows() - 1; row++)
+  {
+    for (int ind = 0; ind < num_interps; ind++)
+    {
+      // Set the row to the interpolated value
+      auto diff = traj.block(row + 1, 0, 1, traj.cols()) - traj.block(row, 0, 1, traj.cols());
+      expanded.block(ind + row * num_interps, 0, 1, traj.cols()) =
+          traj.block(row, 0, 1, traj.cols()) + diff * (1 / static_cast<double>(num_interps)) * static_cast<double>(ind);
+    }
+  }
+  // Need the last row
+  expanded.block(expanded.rows() - 1, 0, 1, traj.cols()) = traj.block(traj.rows() - 1, 0, 1, traj.cols());
+  collisions.clear();
+  found = tesseract::continuousCollisionCheckTrajectory(
+      *manager, *config.prob->GetEnv(), *config.prob->GetKin(), expanded, collisions);
+
+  ROS_INFO("Post Check collision time: %.3f", (ros::Time::now() - tStart).toSec());
+  ROS_INFO("Collision Found: %s", found ? "True" : "False");
+
+  std::cout << expanded.rows() << "\n";
+  std::cout << "Expanded:\n" << expanded << "\n\n\n\n";
+
   if (file_write_cb)
     stream_ptr_place->close();
 
   // plot the trajectory in Rviz
   plotter.plotTrajectory(env->getJointNames(),
                          planning_response_place.trajectory.leftCols(env->getJointNames().size()));
+  //  plotter.plotTrajectory(env->getJointNames(), expanded);
   std::cout << planning_response_place.trajectory << '\n';
 
   ROS_INFO("Done");
