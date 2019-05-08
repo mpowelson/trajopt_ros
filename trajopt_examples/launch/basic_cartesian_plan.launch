@@ -42,7 +42,7 @@
   </test>
   <test if="$(arg testing)" pkg="trajopt_examples" type="trajopt_examples_basic_cartesian_plan" test-name="trajopt_examples_basic_cartesian_plan_cpp" time-limit="120.0">
     <param name="plotting" type="bool" value="false"/>
-    <param name="init_method" type="string" value="json"/>
+    <param name="init_method" type="string" value="cpp"/>
   </test>
 
 </launch>
