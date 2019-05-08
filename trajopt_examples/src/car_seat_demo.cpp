@@ -219,7 +219,9 @@ Eigen::VectorXd getPositionVectorXd(const BasicKinConstPtr& kin, const std::unor
   return result;
 }
 
-std::shared_ptr<ProblemConstructionInfo> cppMethod(const tesseract_ros::KDLEnvPtr& env_, const std::string& start, const std::string& finish)
+std::shared_ptr<ProblemConstructionInfo> cppMethod(const tesseract_ros::KDLEnvPtr& env_,
+                                                   const std::string& start,
+                                                   const std::string& finish)
 {
   std::shared_ptr<ProblemConstructionInfo> pci(new ProblemConstructionInfo(env_));
 
@@ -408,6 +410,9 @@ TEST(TrajOptExamples, CarSeatDemo)
   plotter->plotTrajectory(prob->GetKin()->getJointNames(), getTraj(place1_opt.x(), prob->GetVars()));
 
   collisions.clear();
+  manager = prob->GetEnv()->getContinuousContactManager();
+  manager->setActiveCollisionObjects(prob->GetKin()->getLinkNames());
+  manager->setContactDistanceThreshold(0);
   found = tesseract::continuousCollisionCheckTrajectory(
       *manager, *prob->GetEnv(), *prob->GetKin(), getTraj(place1_opt.x(), prob->GetVars()), collisions);
 
