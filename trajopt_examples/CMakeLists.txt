@@ -48,7 +48,8 @@ target_link_libraries(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan ${GTEST_L
 target_compile_options(${PROJECT_NAME}_puzzle_piece_auxillary_axes_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 add_executable(${PROJECT_NAME}_pick_and_place_plan src/pick_and_place_plan.cpp)
-target_link_libraries(${PROJECT_NAME}_pick_and_place_plan ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_pick_and_place_plan ${GTEST_LIBRARIES} ${catkin_LIBRARIES})
+target_compile_options(${PROJECT_NAME}_pick_and_place_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 # Mark executables and/or libraries for installation
 install(
@@ -68,6 +69,7 @@ if(CATKIN_ENABLE_TESTING)
   add_rostest(test/basic_cartesian_plan.test)
   add_rostest(test/car_seat_demo.test)
   add_rostest(test/glass_up_right_plan.test)
+  add_rostest(test/pick_and_place_plan.test)
   add_rostest(test/puzzle_piece_plan.test)
   add_rostest(test/puzzle_piece_auxillary_axes_plan.test)
 
