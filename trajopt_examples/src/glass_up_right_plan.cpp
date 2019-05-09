@@ -40,6 +40,77 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <trajopt_utils/config.hpp>
 #include <trajopt_utils/logging.hpp>
 
+// Pagmo
+#include <pagmo/algorithm.hpp>
+#include <pagmo/algorithms/sade.hpp>
+#include <pagmo/algorithms/pso.hpp>
+#include <pagmo/archipelago.hpp>
+#include <pagmo/problem.hpp>
+
+// From UDP
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <pagmo/exceptions.hpp>
+#include <pagmo/problem.hpp>  // needed for cereal registration macro
+#include <pagmo/types.hpp>
+
+namespace pagmo
+{
+struct trajopt_udp
+{
+  trajopt_udp(){};
+
+  vector_double fitness(const vector_double& decision_vec) const
+  {
+    // These are all added to the objective function. Note that there is no manual inflating of constraints like done in
+    // the sco solver. In practice I think the constraints would just have a very large coefficient and a steep slope
+    std::vector<double> objective;
+    for (const sco::CostPtr& cost : costs_)
+    {
+      objective.push_back(cost->value(decision_vec));
+    }
+    for (const sco::ConstraintPtr& constraint : constraints_)
+    {
+      objective.push_back(constraint->violation(decision_vec));
+    }
+    // Sum them all for now to convert to single objective
+    vector_double f(1, 0.);
+    for (size_t ind = 0; ind < objective.size(); ind++)
+      f[0] += objective[ind];
+    return f;
+  }
+
+  std::pair<vector_double, vector_double> get_bounds() const { return { lower_, upper_ }; }
+
+  // This method is necessary or else n_obj will be assumed 1. For now it is set to 1 because not many solvers can
+  // handle multi objective
+  vector_double::size_type get_nobj() const
+  {
+    //      return constraints_.size() + costs_.size();
+    return 1;
+  };
+
+  trajopt::TrajOptProbPtr prob_;
+  std::vector<sco::ConstraintPtr> constraints_;
+  std::vector<sco::CostPtr> costs_;
+  std::vector<double> lower_;
+  std::vector<double> upper_;
+
+  void setProb(trajopt::TrajOptProbPtr prob)
+  {
+    prob_ = prob;
+    lower_ = prob->getLowerBounds();
+    upper_ = prob->getUpperBounds();
+    constraints_ = prob->getConstraints();
+    costs_ = prob->getCosts();
+  }
+};
+
+}  // namespace pagmo
+
 using namespace trajopt;
 using namespace tesseract;
 
@@ -52,7 +123,7 @@ const std::string TRAJOPT_DESCRIPTION_PARAM =
 static bool plotting_ = false;
 static bool write_to_file_ = false;
 static int steps_ = 5;
-static std::string method_ = "json";
+static std::string method_ = "cpp";
 static urdf::ModelInterfaceSharedPtr urdf_model_; /**< URDF Model */
 static srdf::ModelSharedPtr srdf_model_;          /**< SRDF Model */
 static tesseract_ros::KDLEnvPtr env_;             /**< Trajopt Basic Environment */
@@ -156,6 +227,9 @@ TrajOptProbPtr cppMethod()
 
 int main(int argc, char** argv)
 {
+  ROS_ERROR("Press enter to continue");
+  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
   ros::init(argc, argv, "glass_up_right_plan");
   ros::NodeHandle pnh("~");
   ros::NodeHandle nh;
@@ -238,60 +312,87 @@ int main(int argc, char** argv)
   // Solve Trajectory
   ROS_INFO("glass upright plan example");
 
-  std::vector<tesseract::ContactResultMap> collisions;
-  ContinuousContactManagerBasePtr manager = prob->GetEnv()->getContinuousContactManager();
-  manager->setActiveCollisionObjects(prob->GetKin()->getLinkNames());
-  manager->setContactDistanceThreshold(0);
+  //  std::vector<tesseract::ContactResultMap> collisions;
+  //  ContinuousContactManagerBasePtr manager = prob->GetEnv()->getContinuousContactManager();
+  //  manager->setActiveCollisionObjects(prob->GetKin()->getLinkNames());
+  //  manager->setContactDistanceThreshold(0);
 
-  bool found = tesseract::continuousCollisionCheckTrajectory(
-      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions);
+  //  bool found = tesseract::continuousCollisionCheckTrajectory(
+  //      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions);
 
-  ROS_INFO((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
+  //  ROS_INFO((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
 
-  sco::BasicTrustRegionSQP opt(prob);
-  if (plotting_)
+  //  sco::BasicTrustRegionSQP opt(prob);
+  //  if (plotting_)
+  //  {
+  //    opt.addCallback(PlotCallback(*prob, plotter));
+  //  }
+
+  //  std::shared_ptr<std::ofstream> stream_ptr;
+  //  if (write_to_file_)
+  //  {
+  //    // Create file write callback discarding any of the file's current contents
+  //    stream_ptr.reset(new std::ofstream);
+  //    std::string path = ros::package::getPath("trajopt") + "/scripts/glass_up_right_plan.csv";
+  //    stream_ptr->open(path, std::ofstream::out | std::ofstream::trunc);
+  //    opt.addCallback(trajopt::WriteCallback(stream_ptr, prob));
+  //  }
+
+  //  opt.initialize(trajToDblVec(prob->GetInitTraj()));
+  //  ros::Time tStart = ros::Time::now();
+  //  opt.optimize();
+  //  ROS_ERROR("planning time: %.3f", (ros::Time::now() - tStart).toSec());
+
+  // Solve with Pagmo
+
+  // 1 - Instantiate a pagmo problem constructing it from a UDP
+  // (user defined problem).
+  //  pagmo::trajopt_UDP temp2(prob);
+  pagmo::trajopt_udp temp;
+  temp.setProb(prob);
+  pagmo::problem pagmo_prob(temp);
+
+  // 2 - Instantiate a pagmo algorithm
+  pagmo::algorithm algo{ pagmo::sade(100) };
+
+  // 3 - Instantiate an archipelago with 16 islands having each 20 individuals
+  pagmo::archipelago archi{ 16, algo, pagmo_prob, 20 };
+
+  // 4 - Run the evolution in parallel on the 16 separate islands 10 times.
+  archi.evolve(10);
+
+  // 5 - Wait for the evolutions to be finished
+  archi.wait_check();
+
+  // 6 - Print the fitness of the best solution in each island
+  for (const auto& isl : archi)
   {
-    opt.addCallback(PlotCallback(*prob, plotter));
+    std::cout << isl.get_population().champion_f()[0] << '\n';
   }
 
-  std::shared_ptr<std::ofstream> stream_ptr;
-  if (write_to_file_)
-  {
-    // Create file write callback discarding any of the file's current contents
-    stream_ptr.reset(new std::ofstream);
-    std::string path = ros::package::getPath("trajopt") + "/scripts/glass_up_right_plan.csv";
-    stream_ptr->open(path, std::ofstream::out | std::ofstream::trunc);
-    opt.addCallback(trajopt::WriteCallback(stream_ptr, prob));
-  }
+  //  double d = 0;
+  //  TrajArray traj = getTraj(opt.x(), prob->GetVars());
+  //  for (unsigned i = 1; i < traj.rows(); ++i)
+  //  {
+  //    for (unsigned j = 0; j < traj.cols(); ++j)
+  //    {
+  //      d += std::abs(traj(i, j) - traj(i - 1, j));
+  //    }
+  //  }
+  //  ROS_ERROR("trajectory norm: %.3f", d);
 
-  opt.initialize(trajToDblVec(prob->GetInitTraj()));
-  ros::Time tStart = ros::Time::now();
-  opt.optimize();
-  ROS_ERROR("planning time: %.3f", (ros::Time::now() - tStart).toSec());
+  //  if (plotting_)
+  //  {
+  //    plotter->clear();
+  //  }
+  //  if (write_to_file_)
+  //  {
+  //    stream_ptr->close();
+  //    ROS_INFO("Data written to file. Evaluate using scripts in trajopt/scripts.");
+  //  }
+  //  collisions.clear();
+  //  found = tesseract::continuousCollisionCheckTrajectory(
+  //      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions;)
 
-  double d = 0;
-  TrajArray traj = getTraj(opt.x(), prob->GetVars());
-  for (unsigned i = 1; i < traj.rows(); ++i)
-  {
-    for (unsigned j = 0; j < traj.cols(); ++j)
-    {
-      d += std::abs(traj(i, j) - traj(i - 1, j));
-    }
-  }
-  ROS_ERROR("trajectory norm: %.3f", d);
-
-  if (plotting_)
-  {
-    plotter->clear();
-  }
-  if (write_to_file_)
-  {
-    stream_ptr->close();
-    ROS_INFO("Data written to file. Evaluate using scripts in trajopt/scripts.");
-  }
-  collisions.clear();
-  found = tesseract::continuousCollisionCheckTrajectory(
-      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions);
-
-  ROS_INFO((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
+  //  ROS_INFO((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
 }
