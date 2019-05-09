@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
 )
 
+find_package(pagmo REQUIRED)
+
 find_package(PCL REQUIRED COMPONENTS core features filters io segmentation surface)
 
 catkin_package()
@@ -22,6 +24,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   SYSTEM ${PCL_INCLUDE_DIRS}
 )
+
+add_executable(pagmo_example src/pagmo_example.cpp)
+target_link_libraries(pagmo_example ${catkin_LIBRARIES})
+target_compile_options(pagmo_example PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 add_executable(${PROJECT_NAME}_basic_cartesian_plan src/basic_cartesian_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_basic_cartesian_plan ${PCL_LIBRARIES} ${catkin_LIBRARIES})
