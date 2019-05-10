@@ -56,6 +56,7 @@ TRAJOPT_IGNORE_WARNINGS_POP
 #include <pagmo/exceptions.hpp>
 #include <pagmo/problem.hpp>  // needed for cereal registration macro
 #include <pagmo/types.hpp>
+#include <pagmo/utils/gradients_and_hessians.hpp>
 
 namespace pagmo
 {
@@ -91,7 +92,15 @@ struct trajopt_udp
   {
     //      return constraints_.size() + costs_.size();
     return 1;
-  };
+  }
+
+  bool has_gradient() const { return true;}
+  vector_double gradient(const vector_double & x) const
+  {
+    using FTYPE = std::function<vector_double (const vector_double&)>;
+    return pagmo::estimate_gradient<FTYPE>(std::bind(&trajopt_udp::fitness, this, std::placeholders::_1), x);
+//    return pagmo::estimate_gradient(&trajopt_udp::fitness, x);
+  }
 
   trajopt::TrajOptProbPtr prob_;
   std::vector<sco::ConstraintPtr> constraints_;
