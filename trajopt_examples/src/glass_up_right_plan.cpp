@@ -211,8 +211,8 @@ TrajOptProbPtr cppMethod()
     pose->wxyz = Eigen::Vector4d(0.0, 0.0, 1.0, 0.0);
     if (i == (pci.basic_info.n_steps - 1) || i == 0)
     {
-      pose->pos_coeffs = Eigen::Vector3d(10, 10, 10);
-      pose->rot_coeffs = Eigen::Vector3d(10, 10, 10);
+      pose->pos_coeffs = Eigen::Vector3d(100, 100, 100);
+      pose->rot_coeffs = Eigen::Vector3d(100, 100, 100);
     }
     else
     {
@@ -227,9 +227,6 @@ TrajOptProbPtr cppMethod()
 
 int main(int argc, char** argv)
 {
-  ROS_ERROR("Press enter to continue");
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-
   ros::init(argc, argv, "glass_up_right_plan");
   ros::NodeHandle pnh("~");
   ros::NodeHandle nh;
@@ -312,37 +309,6 @@ int main(int argc, char** argv)
   // Solve Trajectory
   ROS_INFO("glass upright plan example");
 
-  //  std::vector<tesseract::ContactResultMap> collisions;
-  //  ContinuousContactManagerBasePtr manager = prob->GetEnv()->getContinuousContactManager();
-  //  manager->setActiveCollisionObjects(prob->GetKin()->getLinkNames());
-  //  manager->setContactDistanceThreshold(0);
-
-  //  bool found = tesseract::continuousCollisionCheckTrajectory(
-  //      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions);
-
-  //  ROS_INFO((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
-
-  //  sco::BasicTrustRegionSQP opt(prob);
-  //  if (plotting_)
-  //  {
-  //    opt.addCallback(PlotCallback(*prob, plotter));
-  //  }
-
-  //  std::shared_ptr<std::ofstream> stream_ptr;
-  //  if (write_to_file_)
-  //  {
-  //    // Create file write callback discarding any of the file's current contents
-  //    stream_ptr.reset(new std::ofstream);
-  //    std::string path = ros::package::getPath("trajopt") + "/scripts/glass_up_right_plan.csv";
-  //    stream_ptr->open(path, std::ofstream::out | std::ofstream::trunc);
-  //    opt.addCallback(trajopt::WriteCallback(stream_ptr, prob));
-  //  }
-
-  //  opt.initialize(trajToDblVec(prob->GetInitTraj()));
-  //  ros::Time tStart = ros::Time::now();
-  //  opt.optimize();
-  //  ROS_ERROR("planning time: %.3f", (ros::Time::now() - tStart).toSec());
-
   // Solve with Pagmo
 
   // 1 - Instantiate a pagmo problem constructing it from a UDP
@@ -356,43 +322,38 @@ int main(int argc, char** argv)
   pagmo::algorithm algo{ pagmo::sade(100) };
 
   // 3 - Instantiate an archipelago with 16 islands having each 20 individuals
-  pagmo::archipelago archi{ 16, algo, pagmo_prob, 20 };
+  pagmo::archipelago archi{ 8, algo, pagmo_prob, 20 };
 
-  // 4 - Run the evolution in parallel on the 16 separate islands 10 times.
-  archi.evolve(10);
-
-  // 5 - Wait for the evolutions to be finished
-  archi.wait_check();
-
-  // 6 - Print the fitness of the best solution in each island
-  for (const auto& isl : archi)
+  for (int i = 0; i< 30; i++)
   {
-    std::cout << isl.get_population().champion_f()[0] << '\n';
+    ROS_ERROR("Press enter to continue");
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    // 4 - Run the evolution in parallel on the 16 separate islands 10 times.
+    archi.evolve(10);
+
+    // 5 - Wait for the evolutions to be finished
+    archi.wait_check();
+
+    // 6 - Print the fitness of the best solution in each island
+    int best_ind = 0;
+    int ind = 0;
+    double best_err = std::numeric_limits<double>::max();
+    for (const auto& isl : archi)
+    {
+      std::cout << "f: " << isl.get_population().champion_f()[0] << "\n";
+      if (isl.get_population().champion_f()[0] < best_err)
+      {
+        best_ind = ind;
+        best_err = isl.get_population().champion_f()[0];
+      }
+      ind++;
+    }
+
+    std::cout << "Best Joint Values: \n";
+    Eigen::MatrixXd traj = trajopt::getTraj(archi[best_ind].get_population().champion_x(), prob->GetVars());
+    std::cout << traj << "\n";
+
+    // plot the trajectory in Rviz
+    plotter->plotTrajectory(env_->getJointNames(), traj);
   }
-
-  //  double d = 0;
-  //  TrajArray traj = getTraj(opt.x(), prob->GetVars());
-  //  for (unsigned i = 1; i < traj.rows(); ++i)
-  //  {
-  //    for (unsigned j = 0; j < traj.cols(); ++j)
-  //    {
-  //      d += std::abs(traj(i, j) - traj(i - 1, j));
-  //    }
-  //  }
-  //  ROS_ERROR("trajectory norm: %.3f", d);
-
-  //  if (plotting_)
-  //  {
-  //    plotter->clear();
-  //  }
-  //  if (write_to_file_)
-  //  {
-  //    stream_ptr->close();
-  //    ROS_INFO("Data written to file. Evaluate using scripts in trajopt/scripts.");
-  //  }
-  //  collisions.clear();
-  //  found = tesseract::continuousCollisionCheckTrajectory(
-  //      *manager, *prob->GetEnv(), *prob->GetKin(), prob->GetInitTraj(), collisions;)
-
-  //  ROS_INFO((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
 }
