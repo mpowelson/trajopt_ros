@@ -1,6 +1,7 @@
 #include <trajopt_utils/macros.h>
 TRAJOPT_IGNORE_WARNINGS_PUSH
 #include <boost/functional/hash.hpp>
+#include <boost/thread/mutex.hpp>
 TRAJOPT_IGNORE_WARNINGS_POP
 
 #include <trajopt/collision_terms.hpp>
@@ -244,9 +245,12 @@ void CollisionsToDistanceExpressions(const tesseract::ContactResultVector& dist_
   }
 }
 
+boost::mutex mutex;
+
 inline size_t hash(const DblVec& x) { return boost::hash_range(x.begin(), x.end()); }
 void CollisionEvaluator::GetCollisionsCached(const DblVec& x, tesseract::ContactResultVector& dist_results)
 {
+  boost::mutex::scoped_lock lock(mutex);
   size_t key = hash(sco::getDblVec(x, GetVars()));
   tesseract::ContactResultVector* it = m_cache.get(key);
   if (it != nullptr)
