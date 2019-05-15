@@ -33,6 +33,10 @@ add_executable(pagmo_example2 src/pagmo_example2.cpp)
 target_link_libraries(pagmo_example2 ${catkin_LIBRARIES})
 target_compile_options(pagmo_example2 PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
+add_executable(pagmo_ipopt_example src/pagmo_ipopt_example.cpp)
+target_link_libraries(pagmo_ipopt_example ${catkin_LIBRARIES} Pagmo::pagmo)
+target_compile_options(pagmo_ipopt_example PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
+
 add_executable(${PROJECT_NAME}_basic_cartesian_plan src/basic_cartesian_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_basic_cartesian_plan ${PCL_LIBRARIES} ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_basic_cartesian_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
