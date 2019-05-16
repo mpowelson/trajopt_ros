@@ -42,8 +42,12 @@ target_link_libraries(${PROJECT_NAME}_basic_cartesian_plan ${PCL_LIBRARIES} ${ca
 target_compile_options(${PROJECT_NAME}_basic_cartesian_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 add_executable(${PROJECT_NAME}_glass_up_right_plan src/glass_up_right_plan.cpp)
-target_link_libraries(${PROJECT_NAME}_glass_up_right_plan ${catkin_LIBRARIES})
+target_link_libraries(${PROJECT_NAME}_glass_up_right_plan ${catkin_LIBRARIES} Pagmo::pagmo)
 target_compile_options(${PROJECT_NAME}_glass_up_right_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
+
+add_executable(${PROJECT_NAME}_glass_up_right_plan_ipopt src/glass_up_right_plan_ipopt.cpp)
+target_link_libraries(${PROJECT_NAME}_glass_up_right_plan_ipopt ${catkin_LIBRARIES} Pagmo::pagmo)
+target_compile_options(${PROJECT_NAME}_glass_up_right_plan_ipopt PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 add_executable(${PROJECT_NAME}_puzzle_piece_plan src/puzzle_piece_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_puzzle_piece_plan ${catkin_LIBRARIES})
