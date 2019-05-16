@@ -49,6 +49,10 @@ add_executable(${PROJECT_NAME}_glass_up_right_plan_ipopt src/glass_up_right_plan
 target_link_libraries(${PROJECT_NAME}_glass_up_right_plan_ipopt ${catkin_LIBRARIES} Pagmo::pagmo)
 target_compile_options(${PROJECT_NAME}_glass_up_right_plan_ipopt PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
+add_executable(${PROJECT_NAME}_glass_up_right_plan_nlopt src/glass_up_right_plan_nlopt.cpp)
+target_link_libraries(${PROJECT_NAME}_glass_up_right_plan_nlopt ${catkin_LIBRARIES} Pagmo::pagmo)
+target_compile_options(${PROJECT_NAME}_glass_up_right_plan_nlopt PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
+
 add_executable(${PROJECT_NAME}_puzzle_piece_plan src/puzzle_piece_plan.cpp)
 target_link_libraries(${PROJECT_NAME}_puzzle_piece_plan ${catkin_LIBRARIES})
 target_compile_options(${PROJECT_NAME}_puzzle_piece_plan PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
