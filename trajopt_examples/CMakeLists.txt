@@ -26,7 +26,7 @@ include_directories(
 )
 
 add_executable(pagmo_example src/pagmo_example.cpp)
-target_link_libraries(pagmo_example ${catkin_LIBRARIES})
+target_link_libraries(pagmo_example ${catkin_LIBRARIES} Pagmo::pagmo)
 target_compile_options(pagmo_example PRIVATE -Wsuggest-override -Wconversion -Wsign-conversion)
 
 add_executable(pagmo_example2 src/pagmo_example2.cpp)

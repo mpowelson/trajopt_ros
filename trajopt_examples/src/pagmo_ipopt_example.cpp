@@ -26,6 +26,10 @@ namespace pagmo
 {
 struct squared
 {
+  // This constructor is needed to when using the fork island because it appears the serialization library does not
+  // support constructors with no arguments.
+  squared(int unneeded){};
+
   squared(){};
 
   vector_double fitness(const vector_double& x) const
@@ -50,8 +54,17 @@ struct squared
     using FTYPE = std::function<vector_double(const vector_double&)>;
     return pagmo::estimate_gradient<FTYPE>(std::bind(&squared::fitness, this, std::placeholders::_1), x);
   }
+
+  template <typename Archive>
+  void serialize(Archive& ar)
+  {
+    ar(123);
+  }
 };
 }  // namespace pagmo
+
+// This is also needed for the fork island
+PAGMO_REGISTER_PROBLEM(pagmo::squared)
 
 int main(int argc, char** argv)
 {
@@ -83,5 +96,33 @@ int main(int argc, char** argv)
     pop = ipopt.evolve(pop);
     std::cout << "Champion x: " << pop.champion_x()[0] << "\n";
     std::cout << "Champion f: " << pop.champion_f()[0] << "\n";
+  }
+
+  // Now we solve using an archipelago.
+  // For me this works about half of the time. This is not really all that beneficial in this case anyway because ipopt
+  // is not threadsafe. Therefore it creates a fork island instead of a thread island.
+  std::cout << "Now we solve the problem several times in parallel \n";
+  std::cout << "If this does not return almost immediately, it is probably hung for some reason \n";
+  ipopt.set_verbosity(0);
+
+  // 2 - Instantiate a pagmo algorithm
+  pagmo::algorithm algo{ ipopt };
+  pagmo::problem test{ tmp };
+  pagmo::population pop2(test, 1);
+
+  // 3 - Instantiate an archipelago with 16 islands having each 20 individuals
+  pagmo::archipelago archi{ 16, algo, pop2 };
+
+  // 4 - Run the evolution in parallel on the 16 separate islands 10 times.
+  archi.evolve(1);
+
+  // 5 - Wait for the evolutions to be finished
+  archi.wait_check();
+
+  // 6 - Print the fitness of the best solution in each island
+  for (const auto& isl : archi)
+  {
+    std::cout << "Champion x: " << isl.get_population().champion_x()[0]
+              << "   Champion f: " << isl.get_population().champion_f()[0] << '\n';
   }
 }
