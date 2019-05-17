@@ -136,8 +136,9 @@ struct trajopt_udp
   bool has_gradient() const { return true; }
   vector_double gradient(const vector_double& x) const
   {
+    const double epsilon = 1E-5;
     using FTYPE = std::function<vector_double(const vector_double&)>;
-    return pagmo::estimate_gradient<FTYPE>(std::bind(&trajopt_udp::fitness, this, std::placeholders::_1), x);
+    return pagmo::estimate_gradient<FTYPE>(std::bind(&trajopt_udp::fitness, this, std::placeholders::_1), x, epsilon);
     //    return pagmo::estimate_gradient(&trajopt_udp::fitness, x);
   }
 
@@ -369,10 +370,19 @@ int main(int argc, char** argv)
   pagmo_prob.set_c_tol(0.1);
 
   // 2 - Instantiate a pagmo algorithm
-  // NLOPT SLSQP - It appears that when using this algorithm there is no benefit to multiple evolve calls, the algorithm restarts on the second iteration anyway
-  pagmo::nlopt nlopt = pagmo::nlopt("slsqp");
+  // NLOPT SLSQP - It appears that when using this algorithm there is no benefit to multiple evolve calls, the algorithm
+  // restarts on the second iteration anyway
+  pagmo::nlopt nlopt = pagmo::nlopt("auglag");
   nlopt.set_verbosity(1);
-  nlopt.set_xtol_rel(0.000001);
+  //  nlopt.set_xtol_rel(0.0001);
+
+  // Stopping criteria are specified in the local optimizer
+  pagmo::nlopt local_optimizer = pagmo::nlopt("slsqp");
+  local_optimizer.set_xtol_rel(0.000001);
+  local_optimizer.set_xtol_abs(0.0001);
+
+  nlopt.set_local_optimizer(local_optimizer);
+
   std::string type = "worst";
   nlopt.set_selection(type);
   nlopt.set_replacement(type);
@@ -393,7 +403,7 @@ int main(int argc, char** argv)
     ROS_ERROR("Press enter to continue");
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     // 4 - Run the evolution
-    archi.evolve(5);
+    archi.evolve(1);
 
     // 5 - Wait for the evolutions to be finished
     archi.wait_check();
