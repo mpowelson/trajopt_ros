@@ -138,7 +138,7 @@ struct trajopt_udp
   vector_double gradient(const vector_double& x) const
   {
     using FTYPE = std::function<vector_double(const vector_double&)>;
-    return pagmo::estimate_gradient<FTYPE>(std::bind(&trajopt_udp::fitness, this, std::placeholders::_1), x);
+    return pagmo::estimate_gradient<FTYPE>(std::bind(&trajopt_udp::fitness, this, std::placeholders::_1), x, 1E-5);
     //    return pagmo::estimate_gradient(&trajopt_udp::fitness, x);
   }
 
@@ -392,13 +392,13 @@ int main(int argc, char** argv)
 //  ipopt_options["max_cpu_time"] = 2.;            // I think there may be a pagmo bug when this ipopt error is thrown
   ipopt_options["acceptable_obj_change_tol"] = 0.1;
   ipopt_options["acceptable_tol"] = 0.7;
-//  ipopt_options["acceptable_iter"] = 5;
+  ipopt_options["acceptable_compl_inf_tol"] = 5;
   ipopt_options["acceptable_constr_viol_tol"] = 0.1;
 
   ipopt.set_numeric_options(ipopt_options);
 
   ipopt.set_integer_option("acceptable_iter", 5);
-  ipopt.set_integer_option("print_level", 5);
+  ipopt.set_integer_option("print_level", 5);          // 4 gives some really useful info on convergence. 5 gives each iteration
 //  ipopt.set_integer_option("max_iter", 1);
 
 
