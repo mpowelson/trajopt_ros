@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(vhacd)
 
+add_compile_options(-std=c++11)
+
 set(VHACD_VERSION_MAJOR 0 CACHE STRING "major version" FORCE)
 set(VHACD_VERSION_MINOR 1 CACHE STRING "minor version" FORCE)
 set(VHACD_VERSION_PATCH 0 CACHE STRING "patch version" FORCE)
@@ -60,6 +62,7 @@ if(OPENMP_FOUND)
 
 endif()
 
+target_link_libraries(${PROJECT_NAME} PUBLIC ${EIGEN3_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
     "$<INSTALL_INTERFACE:include>")
