@@ -18,6 +18,7 @@ message("NO_OPENCL " ${NO_OPENCL})
 message("NO_OPENMP " ${NO_OPENMP})
 
 include("${CMAKE_SOURCE_DIR}/scripts/cmake_common.cmake")
+add_compile_options(-std=c++11)
 
 if (NOT NO_OPENCL)
   #include(FindOpenCL OPTIONAL)
