@@ -674,14 +674,16 @@ void CartPoseTermInfo::hatch(TrajOptProb& prob)
   else if ((term_type & TT_COST) && ~(term_type | ~TT_USE_TIME))
   {
     sco::VectorOfVectorPtr f(new CartPoseErrCalculator(input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp));
+    sco::MatrixOfVectorPtr dfdx(new CartPoseJacCalculator(prob.GetKin(), adjacency_map, world_to_base, link));
     prob.addCost(sco::CostPtr(new TrajOptCostFromErrFunc(
-        f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::ABS, name)));
+        f, dfdx, prob.GetVarRow(timestep, 0, n_dof), concat(pos_coeffs, rot_coeffs), sco::ABS, name)));
   }
   else if ((term_type & TT_CNT) && ~(term_type | ~TT_USE_TIME))
   {
     sco::VectorOfVectorPtr f(new CartPoseErrCalculator(input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp));
+    sco::MatrixOfVectorPtr dfdx(new CartPoseJacCalculator(prob.GetKin(), adjacency_map, world_to_base, link));
     prob.addConstraint(sco::ConstraintPtr(new TrajOptConstraintFromErrFunc(
-        f, prob.GetVarRow(timestep, 0, n_dof), concat(rot_coeffs, pos_coeffs), sco::EQ, name)));
+        f, dfdx, prob.GetVarRow(timestep, 0, n_dof), concat(pos_coeffs, rot_coeffs), sco::EQ, name)));
   }
   else
   {

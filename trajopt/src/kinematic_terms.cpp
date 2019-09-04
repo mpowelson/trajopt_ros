@@ -89,7 +89,7 @@ VectorXd CartPoseErrCalculator::operator()(const VectorXd& dof_vals) const
 
   Isometry3d pose_err = pose_inv_ * new_pose;
   Quaterniond q(pose_err.rotation());
-  VectorXd err = concat(Vector3d(q.x(), q.y(), q.z()), pose_err.translation());
+  VectorXd err = concat(pose_err.translation(), Vector3d(q.x(), q.y(), q.z()));
   return err;
 }
 
@@ -105,6 +105,30 @@ void CartPoseErrCalculator::Plot(const tesseract_visualization::VisualizationPtr
   plotter->plotAxis(cur_pose, 0.05);
   plotter->plotAxis(target, 0.05);
   plotter->plotArrow(cur_pose.translation(), target.translation(), Eigen::Vector4d(1, 0, 1, 1), 0.005);
+}
+
+MatrixXd CartPoseJacCalculator::operator()(const VectorXd& dof_vals) const
+{
+  int n_dof = static_cast<int>(manip_->numJoints());
+  MatrixXd jac0(6,  n_dof);
+  Eigen::Isometry3d tf0;
+
+  if (tcp_.translation().isZero())
+  {
+    manip_->calcFwdKin(tf0, dof_vals, kin_link_->link_name);
+    manip_->calcJacobian(jac0, dof_vals, kin_link_->link_name);
+    tesseract_kinematics::jacobianChangeBase(jac0, world_to_base_);
+    tesseract_kinematics::jacobianChangeRefPoint(jac0, (world_to_base_ * tf0).linear() * kin_link_->transform.translation());
+  }
+  else
+  {
+    manip_->calcFwdKin(tf0, dof_vals, kin_link_->link_name);
+    manip_->calcJacobian(jac0, dof_vals, kin_link_->link_name);
+    tesseract_kinematics::jacobianChangeBase(jac0, world_to_base_);
+    tesseract_kinematics::jacobianChangeRefPoint(jac0, (world_to_base_ * tf0).linear() * (kin_link_->transform * tcp_).translation());
+  }
+
+  return jac0;
 }
 
 MatrixXd CartVelJacCalculator::operator()(const VectorXd& dof_vals) const
