@@ -231,7 +231,7 @@ VectorXd CartPoseTolerancedErrCalculator::operator()(const VectorXd& dof_vals) c
 
   // eulerAngles(2,1,0) returns the rotation in ZYX Euler angles. Since these can be converted to fixed axis rotations
   // by reversing the order, this corresponds to XYZ rotations about the fixed target axis
-  Eigen::Vector3d euler_delta = pose_delta.matrix().eulerAngles(2, 1, 0);
+  Eigen::Vector3d euler_delta = pose_delta.linear().eulerAngles(2, 1, 0);
 
   // Since negatives errors are ignored in the hinge, upper_error = x - tolerance. lower_error = tolerance - x
   Eigen::VectorXd upper_error = concat(pose_delta.translation(), euler_delta) - upper_tolerance_;

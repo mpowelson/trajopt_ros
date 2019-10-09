@@ -274,6 +274,45 @@ struct CartPoseTermInfo : public TermInfo
   DEFINE_CREATE(CartPoseTermInfo)
 };
 
+/** @brief This term is used when the goal frame is fixed in cartesian space and there are tolerances
+
+  Set term_type == TT_COST or TT_CNT for cost or constraint.
+*/
+struct CartPoseTolerancedTermInfo : public TermInfo
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  /** @brief Timestep at which to apply term */
+  int timestep;
+  /** @brief  Cartesian position */
+  Eigen::Vector3d xyz;
+  /** @brief Rotation quaternion */
+  Eigen::Vector4d wxyz;
+  /** @brief coefficients for position and rotation */
+  Eigen::Vector3d pos_coeffs, rot_coeffs;
+  /** @brief Distance from target pose that is allowed. Should always be positive. Order is (x,y,z,rx,ry,rz) and should
+   * be of the same length as indices. Position is in meters. Rotations are in radians */
+  Eigen::VectorXd upper_tolerance;
+  /** @brief Distance frrom target pose that is allowed. Should always be negative. Order is (x,y,z,rx,ry,rz) and should
+   * be of the same length as indices. Position is in meters. Rotations are in radians */
+  Eigen::VectorXd lower_tolerance;
+  /** @brief Link which should reach desired pose */
+  std::string link;
+  /** @brief Static transform applied to the link */
+  Eigen::Isometry3d tcp;
+  /** @brief The frame relative to which the target position is defined. If empty, frame is assumed to the root,
+   * "world", frame */
+  std::string target;
+
+  CartPoseTolerancedTermInfo();
+
+  /** @brief Used to add term to pci from json */
+  void fromJson(ProblemConstructionInfo& pci, const Json::Value& v) override;
+  /** @brief Converts term info into cost/constraint and adds it to trajopt problem */
+  void hatch(TrajOptProb& prob) override;
+  DEFINE_CREATE(CartPoseTolerancedTermInfo)
+};
+
 /**
  \brief Applies cost/constraint to the cartesian velocity of a link
 

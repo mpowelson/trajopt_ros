@@ -811,6 +811,171 @@ void CartPoseTermInfo::hatch(TrajOptProb& prob)
   }
 }
 
+CartPoseTolerancedTermInfo::CartPoseTolerancedTermInfo() : TermInfo(TT_COST | TT_CNT)
+{
+  pos_coeffs = Eigen::Vector3d::Ones();
+  rot_coeffs = Eigen::Vector3d::Ones();
+  tcp.setIdentity();
+  upper_tolerance = Eigen::VectorXd::Zero(6);
+  lower_tolerance = Eigen::VectorXd::Zero(6);
+}
+
+void CartPoseTolerancedTermInfo::fromJson(ProblemConstructionInfo& pci, const Json::Value& v)
+{
+  FAIL_IF_FALSE(v.isMember("params"));
+  Eigen::Vector3d tcp_xyz = Eigen::Vector3d::Zero();
+  Eigen::Vector4d tcp_wxyz = Eigen::Vector4d(1, 0, 0, 0);
+
+  const Json::Value& params = v["params"];
+  json_marshal::childFromJson(params, timestep, "timestep", pci.basic_info.n_steps - 1);
+  json_marshal::childFromJson(params, xyz, "xyz");
+  json_marshal::childFromJson(params, wxyz, "wxyz");
+  json_marshal::childFromJson(params, pos_coeffs, "pos_coeffs", Eigen::Vector3d(1, 1, 1));
+  json_marshal::childFromJson(params, rot_coeffs, "rot_coeffs", Eigen::Vector3d(1, 1, 1));
+  //  json_marshal::childFromJson(params, upper_tolerance, "upper_tolerance", Eigen::VectorXd() =
+  //  Eigen::VectorXd::Zero(6)); json_marshal::childFromJson(params, lower_tolerance, "lower_tolerance",
+  //  Eigen::VectorXd() = Eigen::VectorXd::Zero(6));
+  json_marshal::childFromJson(params, link, "link");
+  json_marshal::childFromJson(params, tcp_xyz, "tcp_xyz", Eigen::Vector3d(0, 0, 0));
+  json_marshal::childFromJson(params, tcp_wxyz, "tcp_wxyz", Eigen::Vector4d(1, 0, 0, 0));
+  json_marshal::childFromJson(params, target, "target", std::string(""));
+
+  Eigen::Quaterniond q(tcp_wxyz(0), tcp_wxyz(1), tcp_wxyz(2), tcp_wxyz(3));
+  tcp.linear() = q.matrix();
+  tcp.translation() = tcp_xyz;
+
+  const std::vector<std::string>& link_names = pci.kin->getActiveLinkNames();
+  if (std::find(link_names.begin(), link_names.end(), link) == link_names.end())
+  {
+    PRINT_AND_THROW(boost::format("invalid link name: %s") % link);
+  }
+
+  if (target.empty())
+  {
+    target = pci.env->getRootLinkName();
+  }
+  else
+  {
+    const std::vector<std::string>& all_links = pci.env->getLinkNames();
+    if (std::find(all_links.begin(), all_links.end(), target) == all_links.end())
+    {
+      PRINT_AND_THROW(boost::format("invalid target link name: %s") % target);
+    }
+  }
+
+  const char* all_fields[] = { "timestep", "xyz",     "wxyz",     "pos_coeffs", "rot_coeffs",
+                               "link",     "tcp_xyz", "tcp_wxyz", "target" };
+  ensure_only_members(params, all_fields, sizeof(all_fields) / sizeof(char*));
+}
+
+void CartPoseTolerancedTermInfo::hatch(TrajOptProb& prob)
+{
+  int n_dof = static_cast<int>(prob.GetKin()->numJoints());
+
+  Eigen::Isometry3d input_pose;
+  Eigen::Quaterniond q(wxyz(0), wxyz(1), wxyz(2), wxyz(3));
+  input_pose.linear() = q.matrix();
+  input_pose.translation() = xyz;
+
+  tesseract_environment::EnvState::ConstPtr state = prob.GetEnv()->getCurrentState();
+  Eigen::Isometry3d world_to_base = Eigen::Isometry3d::Identity();
+  try
+  {
+    world_to_base = state->transforms.at(prob.GetKin()->getBaseLinkName());
+  }
+  catch (const std::exception&)
+  {
+    PRINT_AND_THROW(boost::format("Failed to find transform for link '%s'") % prob.GetKin()->getBaseLinkName());
+  }
+
+  Eigen::Isometry3d world_to_target = Eigen::Isometry3d::Identity();
+  if (!target.empty())
+  {
+    try
+    {
+      world_to_target = state->transforms.at(target);
+    }
+    catch (const std::exception& ex)
+    {
+      PRINT_AND_THROW(boost::format("Failed to find transform for link '%s'") % target);
+    }
+  }
+
+  tesseract_environment::AdjacencyMap::Ptr adjacency_map = std::make_shared<tesseract_environment::AdjacencyMap>(
+      prob.GetEnv()->getSceneGraph(), prob.GetKin()->getActiveLinkNames(), state->transforms);
+
+  // Next parse the coeff and if not zero add the indice and coeff
+  std::vector<int> ic;
+  std::vector<double> c;
+  ic.reserve(6);
+  c.reserve(6);
+  for (int i = 0; i < 3; ++i)
+  {
+    if (std::abs(pos_coeffs[i]) > 1e-5)
+    {
+      ic.push_back(i);
+      c.push_back(pos_coeffs[i]);
+    }
+  }
+
+  for (int i = 0; i < 3; ++i)
+  {
+    if (std::abs(rot_coeffs[i]) > 1e-5)
+    {
+      ic.push_back(i + 3);
+      c.push_back(rot_coeffs[i]);
+    }
+  }
+
+  Eigen::VectorXi indices = Eigen::Map<Eigen::VectorXi>(ic.data(), static_cast<long>(ic.size()));
+  Eigen::VectorXd coeff = Eigen::Map<Eigen::VectorXd>(c.data(), static_cast<long>(c.size()));
+
+  if (term_type == (TT_COST | TT_USE_TIME))
+  {
+    CONSOLE_BRIDGE_logError("Use time version of this term has not been defined.");
+  }
+  else if (term_type == (TT_CNT | TT_USE_TIME))
+  {
+    CONSOLE_BRIDGE_logError("Use time version of this term has not been defined.");
+  }
+  else if ((term_type & TT_COST) && ~(term_type | ~TT_USE_TIME))
+  {
+    sco::VectorOfVector::Ptr f(new CartPoseTolerancedErrCalculator(world_to_target * input_pose,
+                                                                   upper_tolerance,
+                                                                   lower_tolerance,
+                                                                   prob.GetKin(),
+                                                                   adjacency_map,
+                                                                   world_to_base,
+                                                                   link,
+                                                                   tcp,
+                                                                   indices));
+    sco::MatrixOfVector::Ptr dfdx(
+        new CartPoseJacCalculator(input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp, indices));
+    prob.addCost(sco::Cost::Ptr(
+        new TrajOptCostFromErrFunc(f, dfdx, prob.GetVarRow(timestep, 0, n_dof), coeff, sco::HINGE, name)));
+  }
+  else if ((term_type & TT_CNT) && ~(term_type | ~TT_USE_TIME))
+  {
+    sco::VectorOfVector::Ptr f(new CartPoseTolerancedErrCalculator(world_to_target * input_pose,
+                                                                   upper_tolerance,
+                                                                   lower_tolerance,
+                                                                   prob.GetKin(),
+                                                                   adjacency_map,
+                                                                   world_to_base,
+                                                                   link,
+                                                                   tcp,
+                                                                   indices));
+    sco::MatrixOfVector::Ptr dfdx(new CartPoseTolerancedJacCalculator(
+        input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp, indices));
+    prob.addConstraint(sco::Constraint::Ptr(
+        new TrajOptConstraintFromErrFunc(f, dfdx, prob.GetVarRow(timestep, 0, n_dof), coeff, sco::HINGE, name)));
+  }
+  else
+  {
+    CONSOLE_BRIDGE_logWarn("CartPoseTermInfo does not have a valid term_type defined. No cost/constraint applied");
+  }
+}
+
 void CartVelTermInfo::fromJson(ProblemConstructionInfo& pci, const Json::Value& v)
 {
   FAIL_IF_FALSE(v.isMember("params"));
