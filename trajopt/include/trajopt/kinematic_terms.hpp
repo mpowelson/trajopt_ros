@@ -276,6 +276,134 @@ struct CartPoseJacCalculator : sco::MatrixOfVector
 };
 
 /**
+ * @brief Calculates the toleranced cartesian error in both position and fixed frame rotation
+ *
+ * Position error is calculated how you might expect. If the distance from the desired point is greater than upper
+ * tolerance or less than lower tolerance then the error is positive. Otherwise it is negative (which should be ignored
+ * by a TrajOpt Hinge constraint.
+ *
+ * Rotation error is calculated by converting the rotational error into fixed frame rotations first around target X,
+ * then around target Y, then around target Z. Then the same tolerance is applied. If the resulting angles are outside
+ * of the limits given, the error is positive
+ */
+struct CartPoseTolerancedErrCalculator : public TrajOptVectorOfVector
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  Eigen::Isometry3d pose_inv_;
+  tesseract_kinematics::ForwardKinematics::ConstPtr manip_;
+  tesseract_environment::AdjacencyMap::ConstPtr adjacency_map_;
+  Eigen::Isometry3d world_to_base_;
+  std::string link_;
+  tesseract_environment::AdjacencyMapPair::ConstPtr kin_link_;
+  Eigen::Isometry3d tcp_;
+
+  /** @brief Distance from target pose that is allowed. Should always be positive. Order is (x,y,z,rx,ry,rz) and should
+   * be of the same length as indices. Position is in meters. Rotations are in radians */
+  Eigen::VectorXd upper_tolerance_;
+
+  /** @brief Distance frrom target pose that is allowed. Should always be negative. Order is (x,y,z,rx,ry,rz) and should
+   * be of the same length as indices. Position is in meters. Rotations are in radians */
+  Eigen::VectorXd lower_tolerance_;
+
+  /**
+   * @brief This is a vector of indices to be returned Default: {0, 1, 2, 3, 4, 5}
+   *
+   * If you only care about x, y and z error, this is {0, 1, 2}
+   * If you only care about rotation error around x, y and z, this is {3, 4, 5}
+   */
+  Eigen::VectorXi indices_;
+
+  CartPoseTolerancedErrCalculator(
+      const Eigen::Isometry3d& pose,
+      const Eigen::VectorXd& upper_tolerance,
+      const Eigen::VectorXd& lower_tolerance,
+      tesseract_kinematics::ForwardKinematics::ConstPtr manip,
+      tesseract_environment::AdjacencyMap::ConstPtr adjacency_map,
+      Eigen::Isometry3d world_to_base,
+      std::string link,
+      Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity(),
+      Eigen::VectorXi indices = Eigen::Matrix<int, 1, 6>(std::vector<int>({ 0, 1, 2, 3, 4, 5 }).data()))
+    : pose_inv_(pose.inverse())
+    , manip_(manip)
+    , adjacency_map_(adjacency_map)
+    , world_to_base_(world_to_base)
+    , link_(link)
+    , tcp_(tcp)
+    , indices_(indices)
+    , upper_tolerance_(upper_tolerance)
+    , lower_tolerance_(lower_tolerance)
+  {
+    kin_link_ = adjacency_map_->getLinkMapping(link_);
+    if (kin_link_ == nullptr)
+    {
+      CONSOLE_BRIDGE_logError("Link name '%s' provided does not exist.", link_.c_str());
+      assert(false);
+    }
+    assert(indices_.size() <= 6);
+    assert(upper_tolerance_.size() == indices_.size());
+    assert(lower_tolerance_.size() == indices_.size());
+    for (size_t idx = 0; idx < lower_tolerance.size(); idx++)
+    {
+      assert(upper_tolerance[idx] >= 0);
+      assert(lower_tolerance[idx] <= 0);
+    }
+  }
+
+  void Plot(const tesseract_visualization::Visualization::Ptr& plotter, const Eigen::VectorXd& dof_vals) override;
+
+  Eigen::VectorXd operator()(const Eigen::VectorXd& dof_vals) const override;
+};
+
+/** @brief Used to calculate the jacobian for StaticCartPoseTermInfo */
+struct CartPoseTolerancedJacCalculator : sco::MatrixOfVector
+{
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
+  Eigen::Isometry3d pose_inv_;
+  tesseract_kinematics::ForwardKinematics::ConstPtr manip_;
+  tesseract_environment::AdjacencyMap::ConstPtr adjacency_map_;
+  Eigen::Isometry3d world_to_base_;
+  std::string link_;
+  tesseract_environment::AdjacencyMapPair::ConstPtr kin_link_;
+  Eigen::Isometry3d tcp_;
+
+  /**
+   * @brief This is a vector of indices to be returned Default: {0, 1, 2, 3, 4, 5}
+   *
+   * If you only care about x, y and z error, this is {0, 1, 2}
+   * If you only care about rotation error around x, y and z, this is {3, 4, 5}
+   */
+  Eigen::VectorXi indices_;
+
+  CartPoseTolerancedJacCalculator(
+      const Eigen::Isometry3d& pose,
+      tesseract_kinematics::ForwardKinematics::ConstPtr manip,
+      tesseract_environment::AdjacencyMap::ConstPtr adjacency_map,
+      Eigen::Isometry3d world_to_base,
+      std::string link,
+      Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity(),
+      Eigen::VectorXi indices = Eigen::Matrix<int, 1, 6>(std::vector<int>({ 0, 1, 2, 3, 4, 5 }).data()))
+    : pose_inv_(pose.inverse())
+    , manip_(manip)
+    , adjacency_map_(adjacency_map)
+    , world_to_base_(world_to_base)
+    , link_(link)
+    , tcp_(tcp)
+    , indices_(indices)
+  {
+    kin_link_ = adjacency_map_->getLinkMapping(link_);
+    if (kin_link_ == nullptr)
+    {
+      CONSOLE_BRIDGE_logError("Link name '%s' provided does not exist.", link_.c_str());
+      assert(false);
+    }
+    assert(indices_.size() <= 6);
+  }
+
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& dof_vals) const override;
+};
+
+/**
  * @brief Used to calculate the jacobian for CartVelTermInfo
  *
  */

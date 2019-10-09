@@ -219,6 +219,96 @@ MatrixXd CartPoseJacCalculator::operator()(const VectorXd& dof_vals) const
   return reduced_jac;  // This is available in 3.4 jac0(indices_, Eigen::all);
 }
 
+VectorXd CartPoseTolerancedErrCalculator::operator()(const VectorXd& dof_vals) const
+{
+  Isometry3d new_pose;
+  manip_->calcFwdKin(new_pose, dof_vals, kin_link_->link_name);
+
+  new_pose = world_to_base_ * new_pose * kin_link_->transform * tcp_;
+
+  // Difference between current pose and the target (may not be error since there is a tolerance)
+  Isometry3d pose_delta = pose_inv_ * new_pose;
+
+  // eulerAngles(2,1,0) returns the rotation in ZYX Euler angles. Since these can be converted to fixed axis rotations
+  // by reversing the order, this corresponds to XYZ rotations about the fixed target axis
+  Eigen::Vector3d euler_delta = pose_delta.matrix().eulerAngles(2, 1, 0);
+
+  // Since negatives errors are ignored in the hinge, upper_error = x - tolerance. lower_error = tolerance - x
+  Eigen::VectorXd upper_error = concat(pose_delta.translation(), euler_delta) - upper_tolerance_;
+  Eigen::VectorXd lower_error = lower_tolerance_ - concat(pose_delta.translation(), euler_delta);
+
+  // We stack the errors such that violations of the upper tolerance are on top and violations of the lower tolerance
+  // are on bottom. If all 6 tolerances are active, this will be 12 long ((x,y,z,rx,ry,rz)_upper,(x,y,z,rx,ry,rz)_lower)
+  Eigen::VectorXd reduced_err(indices_.size() * 2);
+  for (int i = 0; i < indices_.size(); ++i)
+  {
+    reduced_err[i] = upper_error[indices_[i]];
+    reduced_err[i + indices_.size()] = upper_error[indices_[i + indices_.size()]];
+  }
+  return reduced_err;  // This is available in 3.4 err(indices_, Eigen::all);
+}
+
+void CartPoseTolerancedErrCalculator::Plot(const tesseract_visualization::Visualization::Ptr& plotter,
+                                           const VectorXd& dof_vals)
+{
+  Isometry3d cur_pose;
+  manip_->calcFwdKin(cur_pose, dof_vals, kin_link_->link_name);
+
+  cur_pose = world_to_base_ * cur_pose * kin_link_->transform * tcp_;
+
+  Isometry3d target = pose_inv_.inverse();
+
+  plotter->plotAxis(cur_pose, 0.05);
+  plotter->plotAxis(target, 0.05);
+  plotter->plotArrow(cur_pose.translation(), target.translation(), Eigen::Vector4d(1, 0, 1, 1), 0.005);
+}
+
+MatrixXd CartPoseTolerancedJacCalculator::operator()(const VectorXd& dof_vals) const
+{
+  int n_dof = static_cast<int>(manip_->numJoints());
+  MatrixXd jac0(6, n_dof);
+  Eigen::Isometry3d tf0;
+
+  manip_->calcFwdKin(tf0, dof_vals, kin_link_->link_name);
+  manip_->calcJacobian(jac0, dof_vals, kin_link_->link_name);
+  tesseract_kinematics::jacobianChangeBase(jac0, world_to_base_);
+  tesseract_kinematics::jacobianChangeRefPoint(
+      jac0, (world_to_base_ * tf0).linear() * (kin_link_->transform * tcp_).translation());
+  tesseract_kinematics::jacobianChangeBase(jac0, pose_inv_);
+
+  // Paper:
+  // https://ethz.ch/content/dam/ethz/special-interest/mavt/robotics-n-intelligent-systems/rsl-dam/documents/RobotDynamics2016/RD2016script.pdf
+  // The jacobian of the robot is the geometric jacobian (Je) which maps generalized velocities in
+  // joint space to time derivatives of the end-effector configuration representation. It does not
+  // represent the analytic jacobian (Ja) given by a partial differentiation of position and rotation
+  // to generalized coordinates. Since the geometric jacobian is unique there exists a linear mapping
+  // between velocities and the derivatives of the representation.
+  //
+  // The approach in the paper was tried but it was having issues with getting correct jacobian.
+  // Must of had an error in the implementation so should revisit at another time but the approach
+  // below should be sufficient and faster than numerical calculations using the err function.
+
+  // The approach below leverages the geometric jacobian and a small step in time to approximate
+  // the partial derivative of the error function. Note that the rotational portion is the only part
+  // that is required to be modified per the paper.
+  Isometry3d pose_err = pose_inv_ * tf0;
+  Eigen::Vector3d rot_err = calcRotationalError(pose_err.rotation());
+  for (int c = 0; c < jac0.cols(); ++c)
+  {
+    auto new_pose_err = addTwist(pose_err, jac0.col(c), 1e-5);
+    Eigen::VectorXd new_rot_err = calcRotationalError(new_pose_err.rotation());
+    jac0.col(c).tail(3) = ((new_rot_err - rot_err) / 1e-5);
+  }
+
+  MatrixXd reduced_jac(indices_.size() * 2, n_dof);
+  for (int i = 0; i < indices_.size(); ++i)
+  {
+    reduced_jac.row(i) = jac0.row(indices_[i]);
+    reduced_jac.row(i + indices_.size()) = jac0.row(indices_[i + indices_.size()]);
+  }
+  return reduced_jac;  // This is available in 3.4 jac0(indices_, Eigen::all);
+}
+
 MatrixXd CartVelJacCalculator::operator()(const VectorXd& dof_vals) const
 {
   int n_dof = static_cast<int>(manip_->numJoints());
