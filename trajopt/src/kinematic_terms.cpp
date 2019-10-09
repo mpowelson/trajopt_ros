@@ -243,7 +243,7 @@ VectorXd CartPoseTolerancedErrCalculator::operator()(const VectorXd& dof_vals) c
   for (int i = 0; i < indices_.size(); ++i)
   {
     reduced_err[i] = upper_error[indices_[i]];
-    reduced_err[i + indices_.size()] = upper_error[indices_[i + indices_.size()]];
+    reduced_err[i + indices_.size()] = upper_error[indices_[i]];
   }
   return reduced_err;  // This is available in 3.4 err(indices_, Eigen::all);
 }
@@ -292,11 +292,11 @@ MatrixXd CartPoseTolerancedJacCalculator::operator()(const VectorXd& dof_vals) c
   // the partial derivative of the error function. Note that the rotational portion is the only part
   // that is required to be modified per the paper.
   Isometry3d pose_err = pose_inv_ * tf0;
-  Eigen::Vector3d rot_err = calcRotationalError(pose_err.rotation());
+  Eigen::Vector3d rot_err = pose_err.linear().eulerAngles(2, 1, 0);
   for (int c = 0; c < jac0.cols(); ++c)
   {
     auto new_pose_err = addTwist(pose_err, jac0.col(c), 1e-5);
-    Eigen::VectorXd new_rot_err = calcRotationalError(new_pose_err.rotation());
+    Eigen::VectorXd new_rot_err = new_pose_err.linear().eulerAngles(2, 1, 0);
     jac0.col(c).tail(3) = ((new_rot_err - rot_err) / 1e-5);
   }
 
@@ -304,7 +304,7 @@ MatrixXd CartPoseTolerancedJacCalculator::operator()(const VectorXd& dof_vals) c
   for (int i = 0; i < indices_.size(); ++i)
   {
     reduced_jac.row(i) = jac0.row(indices_[i]);
-    reduced_jac.row(i + indices_.size()) = jac0.row(indices_[i + indices_.size()]);
+    reduced_jac.row(i + indices_.size()) = jac0.row(indices_[i]);
   }
   return reduced_jac;  // This is available in 3.4 jac0(indices_, Eigen::all);
 }

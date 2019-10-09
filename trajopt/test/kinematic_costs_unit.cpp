@@ -131,6 +131,31 @@ TEST_F(KinematicCostsTest, DynamicCartPoseJacCalculator)
   checkJacobian(f, dfdx, values, 1.0e-5);
 }
 
+TEST_F(KinematicCostsTest, CartPoseTolerancedJacCalculator)
+{
+  CONSOLE_BRIDGE_logDebug("KinematicCostsTest, CartPoseJacCalculator");
+
+  auto env = tesseract_->getEnvironment();
+  auto kin = tesseract_->getFwdKinematicsManager()->getFwdKinematicSolver("right_arm");
+  auto world_to_base = env->getCurrentState()->transforms.at(kin->getBaseLinkName());
+  auto adjacency_map = std::make_shared<tesseract_environment::AdjacencyMap>(
+      env->getSceneGraph(), kin->getActiveLinkNames(), env->getCurrentState()->transforms);
+
+  std::string link = "r_gripper_tool_frame";
+  Eigen::Isometry3d input_pose = tesseract_->getEnvironment()->getCurrentState()->transforms.at(link);
+  Eigen::Isometry3d tcp = Eigen::Isometry3d::Identity();
+
+  Eigen::VectorXd values(7);
+  values << -1.1, 1.2, -3.3, -1.4, 5.5, -1.6, 7.7;
+
+  auto upper_tol = Eigen::VectorXd::Zero(6);
+  auto lower_tol = Eigen::VectorXd::Zero(6);
+
+  CartPoseTolerancedErrCalculator f(input_pose, upper_tol, lower_tol, kin, adjacency_map, world_to_base, link, tcp);
+  CartPoseTolerancedJacCalculator dfdx(input_pose, kin, adjacency_map, world_to_base, link, tcp);
+  checkJacobian(f, dfdx, values, 1.0e-5);
+}
+
 ////////////////////////////////////////////////////////////////////
 
 int main(int argc, char** argv)

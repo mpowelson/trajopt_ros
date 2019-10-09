@@ -342,7 +342,7 @@ struct CartPoseTolerancedErrCalculator : public TrajOptVectorOfVector
     assert(indices_.size() <= 6);
     assert(upper_tolerance_.size() == indices_.size());
     assert(lower_tolerance_.size() == indices_.size());
-    for (size_t idx = 0; idx < lower_tolerance.size(); idx++)
+    for (size_t idx = 0; idx < static_cast<size_t>(lower_tolerance.size()); idx++)
     {
       assert(upper_tolerance[idx] >= 0);
       assert(lower_tolerance[idx] <= 0);

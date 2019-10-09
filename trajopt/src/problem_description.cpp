@@ -950,7 +950,7 @@ void CartPoseTolerancedTermInfo::hatch(TrajOptProb& prob)
                                                                    tcp,
                                                                    indices));
     sco::MatrixOfVector::Ptr dfdx(
-        new CartPoseJacCalculator(input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp, indices));
+        new CartPoseTolerancedJacCalculator(input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp, indices));
     prob.addCost(sco::Cost::Ptr(
         new TrajOptCostFromErrFunc(f, dfdx, prob.GetVarRow(timestep, 0, n_dof), coeff, sco::HINGE, name)));
   }
@@ -968,7 +968,7 @@ void CartPoseTolerancedTermInfo::hatch(TrajOptProb& prob)
     sco::MatrixOfVector::Ptr dfdx(new CartPoseTolerancedJacCalculator(
         input_pose, prob.GetKin(), adjacency_map, world_to_base, link, tcp, indices));
     prob.addConstraint(sco::Constraint::Ptr(
-        new TrajOptConstraintFromErrFunc(f, dfdx, prob.GetVarRow(timestep, 0, n_dof), coeff, sco::HINGE, name)));
+        new TrajOptConstraintFromErrFunc(f, dfdx, prob.GetVarRow(timestep, 0, n_dof), coeff, sco::INEQ, name)));
   }
   else
   {
