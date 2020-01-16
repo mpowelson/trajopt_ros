@@ -281,6 +281,7 @@ CollisionEvaluator::CollisionEvaluator(tesseract_kinematics::ForwardKinematics::
   , adjacency_map_(std::move(adjacency_map))
   , world_to_base_(world_to_base)
   , safety_margin_data_(std::move(safety_margin_data))
+  , safety_margin_buffer_(0.05)
   , contact_test_type_(contact_test_type)
   , longest_valid_segment_length_(longest_valid_segment_length)
   , state_solver_(env_->getStateSolver())
@@ -467,7 +468,7 @@ void CollisionEvaluator::removeInvalidContactResults(tesseract_collision::Contac
           }
         };
 
-        return (!(pair_data[0] > r.distance));
+        return (!((pair_data[0] + safety_margin_buffer_) > r.distance));
       });
 
   contact_results.erase(end, contact_results.end());
@@ -493,7 +494,7 @@ SingleTimestepCollisionEvaluator::SingleTimestepCollisionEvaluator(
 
   contact_manager_ = env_->getDiscreteContactManager();
   contact_manager_->setActiveCollisionObjects(adjacency_map_->getActiveLinkNames());
-  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin());
+  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin() + safety_margin_buffer_);
 }
 
 void SingleTimestepCollisionEvaluator::CalcCollisions(const DblVec& x,
@@ -511,8 +512,8 @@ void SingleTimestepCollisionEvaluator::CalcCollisions(const DblVec& x,
   {
     const Eigen::Vector2d& data = getSafetyMarginData()->getPairSafetyMarginData(pair.first.first, pair.first.second);
     auto end =
-        std::remove_if(pair.second.begin(), pair.second.end(), [&data](const tesseract_collision::ContactResult& r) {
-          return (!(data[0] > r.distance));
+        std::remove_if(pair.second.begin(), pair.second.end(), [&data, this](const tesseract_collision::ContactResult& r) {
+          return (!((data[0] + safety_margin_buffer_) > r.distance));
         });
     pair.second.erase(end, pair.second.end());
   }
@@ -600,7 +601,7 @@ DiscreteCollisionEvaluator::DiscreteCollisionEvaluator(tesseract_kinematics::For
 
   contact_manager_ = env_->getDiscreteContactManager();
   contact_manager_->setActiveCollisionObjects(adjacency_map_->getActiveLinkNames());
-  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin());
+  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin() + safety_margin_buffer_);
 
   switch (evaluator_type_)
   {
@@ -787,7 +788,7 @@ CastCollisionEvaluator::CastCollisionEvaluator(tesseract_kinematics::ForwardKine
 
   contact_manager_ = env_->getContinuousContactManager();
   contact_manager_->setActiveCollisionObjects(adjacency_map_->getActiveLinkNames());
-  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin());
+  contact_manager_->setContactDistanceThreshold(safety_margin_data_->getMaxSafetyMargin() + safety_margin_buffer_);
 
   switch (evaluator_type_)
   {

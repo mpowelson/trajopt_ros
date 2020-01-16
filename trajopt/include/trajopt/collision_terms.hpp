@@ -98,6 +98,7 @@ protected:
   tesseract_environment::AdjacencyMap::ConstPtr adjacency_map_;
   Eigen::Isometry3d world_to_base_;
   SafetyMarginData::ConstPtr safety_margin_data_;
+  double safety_margin_buffer_{0.05};
   tesseract_collision::ContactTestType contact_test_type_;
   double longest_valid_segment_length_;
   tesseract_environment::StateSolver::Ptr state_solver_;
