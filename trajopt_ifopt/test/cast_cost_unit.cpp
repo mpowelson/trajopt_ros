@@ -144,8 +144,8 @@ TEST_F(CastTest, boxes)  // NOLINT
   ifopt::IpoptSolver ipopt;
   ipopt.SetOption("derivative_test", "first-order");
   ipopt.SetOption("linear_solver", "mumps");
-   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
-//  ipopt.SetOption("jacobian_approximation", "exact");
+//   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
+  ipopt.SetOption("jacobian_approximation", "exact");
   ipopt.SetOption("print_level", 5);
 
   // 6) solve
