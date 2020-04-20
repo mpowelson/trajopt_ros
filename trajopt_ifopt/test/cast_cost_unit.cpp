@@ -127,7 +127,7 @@ TEST_F(CastTest, boxes)  // NOLINT
   double safety_margin_buffer = 0.05;
   sco::VarVector var_vector;  // unused
 
-  auto collision_evaluator = std::make_shared<trajopt::SingleTimestepCollisionEvaluator>(
+  trajopt::SingleTimestepCollisionEvaluator::Ptr collision_evaluator = std::make_shared<trajopt::SingleTimestepCollisionEvaluator>(
       kin,
       env,
       adj_map,
@@ -152,8 +152,8 @@ TEST_F(CastTest, boxes)  // NOLINT
   ifopt::IpoptSolver ipopt;
   ipopt.SetOption("derivative_test", "first-order");
   ipopt.SetOption("linear_solver", "mumps");
-  // ipopt.SetOption("jacobian_approximation", "finite-difference-values");
-  ipopt.SetOption("jacobian_approximation", "exact");
+   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
+//  ipopt.SetOption("jacobian_approximation", "exact");
   ipopt.SetOption("print_level", 5);
 
 

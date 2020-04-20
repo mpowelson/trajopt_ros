@@ -19,7 +19,7 @@ public:
   using Ptr = std::shared_ptr<CollisionConstraintIfopt>;
   using ConstPtr = std::shared_ptr<const CollisionConstraintIfopt>;
 
-  CollisionConstraintIfopt(CollisionEvaluator::Ptr collision_evaluator,
+  CollisionConstraintIfopt(SingleTimestepCollisionEvaluator::Ptr collision_evaluator,
                            JointPosition::Ptr position_var,
                            const std::string& name = "Collision");
 
@@ -56,7 +56,7 @@ private:
    * Do not access them directly. Instead use this->GetVariables()->GetComponent(position_var->GetName())->GetValues()*/
   JointPosition::Ptr position_var_;
 
-  CollisionEvaluator::Ptr collision_evaluator_;
+  SingleTimestepCollisionEvaluator::Ptr collision_evaluator_;
 };
 };  // namespace trajopt
 #endif
