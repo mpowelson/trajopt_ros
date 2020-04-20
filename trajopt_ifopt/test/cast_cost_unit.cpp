@@ -60,18 +60,10 @@ TEST_F(CastTest, boxes)  // NOLINT
 {
   CONSOLE_BRIDGE_logDebug("CastTest, boxes");
 
-//  Json::Value root = readJsonFile(std::string(TRAJOPT_DIR) + "/test/data/config/box_cast_test.json");
-
   std::unordered_map<std::string, double> ipos;
   ipos["boxbot_x_joint"] = -1.9;
   ipos["boxbot_y_joint"] = 0;
   tesseract_->getEnvironment()->setState(ipos);
-
-  //  plotter_->plotScene();
-
-//  TrajOptProb::Ptr prob = ConstructProblem(root, tesseract_);
-//  ASSERT_TRUE(!!prob);
-//  TrajOptProb::Ptr prob;
 
   std::vector<ContactResultMap> collisions;
   tesseract_environment::StateSolver::Ptr state_solver = tesseract_->getEnvironment()->getStateSolver();
@@ -156,12 +148,21 @@ TEST_F(CastTest, boxes)  // NOLINT
 //  ipopt.SetOption("jacobian_approximation", "exact");
   ipopt.SetOption("print_level", 5);
 
+  // 6) solve
+  ipopt.Solve(nlp);
+  Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
+  std::cout << x.transpose() << std::endl;
 
-//  bool found =
-//      checkTrajectory(collisions, *manager, *state_solver, forward_kinematics->getJointNames(), prob->GetInitTraj());
+  TrajArray inputs(3,2);
+  inputs << -1.9, 0, 0, 1.9,  1.9, 3.8;
+  Eigen::Map<TrajArray> results(x.data(), 3, 2);
 
-//  EXPECT_TRUE(found);
-//  CONSOLE_BRIDGE_logDebug((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
+
+  bool found =
+      checkTrajectory(collisions, *manager, *state_solver, forward_kinematics->getJointNames(), inputs);
+
+  EXPECT_TRUE(found);
+  CONSOLE_BRIDGE_logWarn((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
 
 //  sco::BasicTrustRegionSQP opt(prob);
 //  if (plotting)
@@ -172,12 +173,12 @@ TEST_F(CastTest, boxes)  // NOLINT
 //  if (plotting)
 //    plotter_->clear();
 
-//  collisions.clear();
-//  found = checkTrajectory(
-//      collisions, *manager, *state_solver, forward_kinematics->getJointNames(), getTraj(opt.x(), prob->GetVars()));
+  collisions.clear();
+  found = checkTrajectory(
+      collisions, *manager, *state_solver, forward_kinematics->getJointNames(), results);
 
-//  EXPECT_FALSE(found);
-//  CONSOLE_BRIDGE_logDebug((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
+  EXPECT_FALSE(found);
+  CONSOLE_BRIDGE_logWarn((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));
 }
 
 int main(int argc, char** argv)

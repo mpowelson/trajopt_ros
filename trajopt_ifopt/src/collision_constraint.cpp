@@ -10,7 +10,7 @@ namespace trajopt
 CollisionConstraintIfopt::CollisionConstraintIfopt(SingleTimestepCollisionEvaluator::Ptr collision_evaluator,
                                                    JointPosition::Ptr position_var,
                                                    const std::string& name)
-  : ifopt::ConstraintSet(6, name)
+  : ifopt::ConstraintSet(1, name)
   , position_var_(std::move(position_var))
   , collision_evaluator_(std::move(collision_evaluator))
 {
