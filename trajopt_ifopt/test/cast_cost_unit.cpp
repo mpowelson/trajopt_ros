@@ -35,7 +35,6 @@ using namespace tesseract_visualization;
 using namespace tesseract_scene_graph;
 using namespace tesseract_geometry;
 
-
 class CastTest : public testing::TestWithParam<const char*>
 {
 public:
@@ -52,7 +51,6 @@ public:
     EXPECT_TRUE(tesseract_->init(urdf_file, srdf_file, locator));
 
     gLogLevel = util::LevelError;
-
   }
 };
 
@@ -67,17 +65,17 @@ TEST_F(CastTest, boxes)  // NOLINT
 
   std::vector<ContactResultMap> collisions;
   tesseract_environment::StateSolver::Ptr state_solver = tesseract_->getEnvironment()->getStateSolver();
-  ContinuousContactManager::Ptr manager = tesseract_->getEnvironment()->getContinuousContactManager();
+  DiscreteContactManager::Ptr manager = tesseract_->getEnvironment()->getDiscreteContactManager();
   auto forward_kinematics = tesseract_->getFwdKinematicsManager()->getFwdKinematicSolver("manipulator");
-  AdjacencyMap::Ptr adjacency_map = std::make_shared<AdjacencyMap>(tesseract_->getEnvironment()->getSceneGraph(),
-                                                                   forward_kinematics->getActiveLinkNames(),
-                                                                   tesseract_->getEnvironment()->getCurrentState()->link_transforms);
+  AdjacencyMap::Ptr adjacency_map =
+      std::make_shared<AdjacencyMap>(tesseract_->getEnvironment()->getSceneGraph(),
+                                     forward_kinematics->getActiveLinkNames(),
+                                     tesseract_->getEnvironment()->getCurrentState()->link_transforms);
 
   manager->setActiveCollisionObjects(adjacency_map->getActiveLinkNames());
   manager->setContactDistanceThreshold(0);
 
   collisions.clear();
-
 
   // 2) Create the problem
   ifopt::Problem nlp;
@@ -93,7 +91,7 @@ TEST_F(CastTest, boxes)  // NOLINT
   }
   {
     Eigen::VectorXd pos(2);
-    pos << 0, 1.9;
+    pos << 0, 0;
     auto var = std::make_shared<trajopt::JointPosition>(pos, "Joint_Position_1");
     vars.push_back(var);
     nlp.AddVariableSet(var);
@@ -105,7 +103,6 @@ TEST_F(CastTest, boxes)  // NOLINT
     vars.push_back(var);
     nlp.AddVariableSet(var);
   }
-
 
   // Step 3: Setup collision
   auto env = tesseract_->getEnvironmentConst();
@@ -119,16 +116,17 @@ TEST_F(CastTest, boxes)  // NOLINT
   double safety_margin_buffer = 0.05;
   sco::VarVector var_vector;  // unused
 
-  trajopt::SingleTimestepCollisionEvaluator::Ptr collision_evaluator = std::make_shared<trajopt::SingleTimestepCollisionEvaluator>(
-      kin,
-      env,
-      adj_map,
-      Eigen::Isometry3d::Identity(),
-      margin_data,
-      tesseract_collision::ContactTestType::CLOSEST,
-      var_vector,
-      trajopt::CollisionExpressionEvaluatorType::SINGLE_TIME_STEP,
-      safety_margin_buffer);
+  trajopt::SingleTimestepCollisionEvaluator::Ptr collision_evaluator =
+      std::make_shared<trajopt::SingleTimestepCollisionEvaluator>(
+          kin,
+          env,
+          adj_map,
+          Eigen::Isometry3d::Identity(),
+          margin_data,
+          tesseract_collision::ContactTestType::CLOSEST,
+          var_vector,
+          trajopt::CollisionExpressionEvaluatorType::SINGLE_TIME_STEP,
+          safety_margin_buffer);
 
   // 4) Add constraints
   for (const auto& var : vars)
@@ -144,7 +142,7 @@ TEST_F(CastTest, boxes)  // NOLINT
   ifopt::IpoptSolver ipopt;
   ipopt.SetOption("derivative_test", "first-order");
   ipopt.SetOption("linear_solver", "mumps");
-//   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
+  //   ipopt.SetOption("jacobian_approximation", "finite-difference-values");
   ipopt.SetOption("jacobian_approximation", "exact");
   ipopt.SetOption("print_level", 5);
 
@@ -153,29 +151,17 @@ TEST_F(CastTest, boxes)  // NOLINT
   Eigen::VectorXd x = nlp.GetOptVariables()->GetValues();
   std::cout << x.transpose() << std::endl;
 
-  TrajArray inputs(3,2);
-  inputs << -1.9, 0, 0, 1.9,  1.9, 3.8;
+  TrajArray inputs(3, 2);
+  inputs << -1.9, 0, 0, 0.0, 1.9, 3.8;
   Eigen::Map<TrajArray> results(x.data(), 3, 2);
 
-
-  bool found =
-      checkTrajectory(collisions, *manager, *state_solver, forward_kinematics->getJointNames(), inputs);
+  bool found = checkTrajectory(collisions, *manager, *state_solver, forward_kinematics->getJointNames(), inputs);
 
   EXPECT_TRUE(found);
   CONSOLE_BRIDGE_logWarn((found) ? ("Initial trajectory is in collision") : ("Initial trajectory is collision free"));
 
-//  sco::BasicTrustRegionSQP opt(prob);
-//  if (plotting)
-//    opt.addCallback(PlotCallback(*prob, plotter_));
-//  opt.initialize(trajToDblVec(prob->GetInitTraj()));
-//  opt.optimize();
-
-//  if (plotting)
-//    plotter_->clear();
-
   collisions.clear();
-  found = checkTrajectory(
-      collisions, *manager, *state_solver, forward_kinematics->getJointNames(), results);
+  found = checkTrajectory(collisions, *manager, *state_solver, forward_kinematics->getJointNames(), results);
 
   EXPECT_FALSE(found);
   CONSOLE_BRIDGE_logWarn((found) ? ("Final trajectory is in collision") : ("Final trajectory is collision free"));

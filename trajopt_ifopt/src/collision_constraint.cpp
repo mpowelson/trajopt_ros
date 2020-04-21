@@ -54,7 +54,7 @@ std::vector<ifopt::Bounds> CollisionConstraintIfopt::GetBounds() const { return 
 
 void CollisionConstraintIfopt::SetBounds(const std::vector<ifopt::Bounds>& bounds)
 {
-  assert(bounds.size() == 6);
+  assert(bounds.size() == 1);
   bounds_ = bounds;
 }
 
@@ -64,7 +64,7 @@ void CollisionConstraintIfopt::FillJacobianBlock(std::string var_set, Jacobian& 
   if (var_set == position_var_->GetName())
   {
     // Reserve enough room in the sparse matrix
-    jac_block.reserve(Eigen::VectorXd::Constant(n_dof_ * 1, 1));
+    jac_block.reserve(Eigen::VectorXd::Constant(1, n_dof_));
 
     // Get current joint values
     VectorXd joint_vals = this->GetVariables()->GetComponent(position_var_->GetName())->GetValues();
@@ -104,9 +104,8 @@ void CollisionConstraintIfopt::FillJacobianBlock(std::string var_set, Jacobian& 
     // This does work but could be faster
     for (int j = 0; j < n_dof_; j++)
     {
-      // Each jac_block will be for a single variable but for all timesteps. Therefore we must index down to the
-      // correct timestep for this variable
-      jac_block.coeffRef(0, j) = grad_vec[j];
+      // Collision is 1 x n_dof
+      jac_block.coeffRef(0, j) = -1 * grad_vec[j];
     }
   }
 }
