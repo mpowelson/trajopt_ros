@@ -7,6 +7,7 @@ TRAJOPT_IGNORE_WARNINGS_PUSH
 #include <tesseract_environment/core/utils.h>
 #include <tesseract_kinematics/core/forward_kinematics.h>
 #include <console_bridge/console.h>
+#include <ifopt/constraint_set.h>
 TRAJOPT_IGNORE_WARNINGS_POP
 
 #include <trajopt/common.hpp>
@@ -488,6 +489,23 @@ struct AvoidSingularitySubsetJacCalculator : AvoidSingularityJacCalculator
     , superset_kin_(std::move(superset_kin))
   {
   }
+  Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const override;
+};
+
+struct IFOPTErrCalculator : sco::VectorOfVector
+{
+  ifopt::ConstraintSet::Ptr ifopt_function_;
+
+  IFOPTErrCalculator(ifopt::ConstraintSet::Ptr ifopt_function) : ifopt_function_(std::move(ifopt_function)) {}
+  Eigen::VectorXd operator()(const Eigen::VectorXd& var_vals) const override;
+};
+
+/** @brief Jacobian calculator for the singularity avoidance error */
+struct IFOPTJacCalculator : sco::MatrixOfVector
+{
+  ifopt::ConstraintSet::Ptr ifopt_function_;
+
+  IFOPTJacCalculator(ifopt::ConstraintSet::Ptr ifopt_function) : ifopt_function_(std::move(ifopt_function)) {}
   Eigen::MatrixXd operator()(const Eigen::VectorXd& var_vals) const override;
 };
 

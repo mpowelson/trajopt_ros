@@ -1958,4 +1958,36 @@ void AvoidSingularityTermInfo::hatch(TrajOptProb& prob)
   }
 }
 
+void IFOPTTermInfo::fromJson(ProblemConstructionInfo &/*pci*/, const Json::Value &/*v*/)
+{
+  CONSOLE_BRIDGE_logWarn("Not implemented yet");
+  assert(false);
+}
+
+void IFOPTTermInfo::hatch(TrajOptProb& prob)
+{
+    sco::VectorOfVector::Ptr f = std::make_shared<IFOPTErrCalculator>(ifopt_function_);
+    sco::MatrixOfVector::Ptr dfdx = std::make_shared<IFOPTJacCalculator>(ifopt_function_);
+
+   int n_dof = prob.GetNumDOF();
+
+    // Apply error calculator as either cost or constraint
+    int i = step;
+    {
+      if (term_type & TT_COST)
+      {
+        prob.addCost(sco::Cost::Ptr(
+            new TrajOptCostFromErrFunc(f, dfdx, prob.GetVarRow(i, 0, n_dof), util::toVectorXd(coeffs), sco::ABS, name)));
+      }
+      else if (term_type & TT_CNT)
+      {
+        prob.addConstraint(sco::Constraint::Ptr(new TrajOptConstraintFromErrFunc(
+            f, dfdx, prob.GetVarRow(i, 0, n_dof), util::toVectorXd(coeffs), sco::INEQ, name)));
+      }
+      else
+      {
+        CONSOLE_BRIDGE_logWarn("Avoid singularity does not have a valid term_type defined. No cost/constraint applied");
+      }
+    }
+}
 }  // namespace trajopt

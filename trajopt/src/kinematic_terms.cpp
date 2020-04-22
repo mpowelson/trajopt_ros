@@ -557,4 +557,14 @@ MatrixXd AvoidSingularitySubsetJacCalculator::operator()(const VectorXd& var_val
   return jac;
 }
 
+VectorXd IFOPTErrCalculator::operator()(const VectorXd& var_vals) const
+{
+  // TODO: I'm not sure how to get var_vals generically into an ifopt constraint.
+}
+
+MatrixXd IFOPTJacCalculator::operator()(const VectorXd& var_vals) const
+{
+  // TODO
+}
+
 }  // namespace trajopt

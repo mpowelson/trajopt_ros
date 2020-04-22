@@ -4,6 +4,7 @@ project(trajopt VERSION 0.1.0 LANGUAGES CXX)
 find_package(Eigen3 REQUIRED)
 find_package(Boost COMPONENTS system python thread program_options REQUIRED)
 find_package(console_bridge REQUIRED)
+find_package(ifopt REQUIRED)
 find_package(trajopt_sco REQUIRED)
 find_package(trajopt_utils REQUIRED)
 find_package(tesseract REQUIRED)
@@ -28,6 +29,7 @@ set(TRAJOPT_SOURCE_FILES
 
 add_library(${PROJECT_NAME} SHARED ${TRAJOPT_SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} PUBLIC
+    ifopt::ifopt_core
     trajopt::trajopt_sco
     trajopt::trajopt_utils
     tesseract::tesseract

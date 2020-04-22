@@ -2,6 +2,7 @@
 #include <trajopt_utils/macros.h>
 TRAJOPT_IGNORE_WARNINGS_PUSH
 #include <unordered_map>
+#include <ifopt/cost_term.h>
 TRAJOPT_IGNORE_WARNINGS_POP
 
 #include <tesseract/tesseract.h>
@@ -640,6 +641,23 @@ struct AvoidSingularityTermInfo : public TermInfo
 
   AvoidSingularityTermInfo(tesseract_kinematics::ForwardKinematics::ConstPtr subset_kin = nullptr, double lambda_ = 0.1)
     : TermInfo(TT_COST | TT_CNT), subset_kin_(std::move(subset_kin)), lambda(lambda_)
+  {
+  }
+};
+
+
+struct IFOPTTermInfo : public TermInfo
+{
+  int step;
+  DblVec coeffs;
+  ifopt::ConstraintSet::Ptr ifopt_function_;
+
+  void hatch(TrajOptProb& prob) override;
+  void fromJson(ProblemConstructionInfo& pci, const Json::Value& v) override;
+//  DEFINE_CREATE(IFOPTTermInfo)
+
+  IFOPTTermInfo(ifopt::ConstraintSet::Ptr ifopt_function)
+    : TermInfo(TT_COST | TT_CNT), ifopt_function_(std::move(ifopt_function))
   {
   }
 };
