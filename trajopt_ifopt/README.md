@@ -29,7 +29,7 @@ Therefore the solvers that will work in this new framework are
 - [ ] Collision - Add other collision evaluators
 - [ ] Collision Callback - Collision is the only one that is missing
 - [ ] Print debug info - trajopt_sco prints a bunch of debugging information that developers have become accustomed to. Some of this has been added to trajopt_sqp, but some like the cost associated with individual convex costs, will require some work to implement
-
+- [ ] Solver test suite - The solver unit tests should be expanded and broken out into a test suite that new solver interfaces must pass. This should a set of IFOPT problems including simple generic math equations as well as trajopt specific problems like are currently in trajopt_sqp
 
 ### Additional Solvers
 
