@@ -8,7 +8,7 @@ if (NOT ${OsqpEigen_FOUND})
 
   include(ExternalProject)
 
-  ExternalProject_Add(osqp
+  ExternalProject_Add(osqp_eigen
     GIT_REPOSITORY    https://github.com/mpowelson/osqp-eigen
     GIT_TAG           feature/expose_workspace
     SOURCE_DIR        ${CMAKE_BINARY_DIR}/../trajopt_ext/osqp_eigen-src
